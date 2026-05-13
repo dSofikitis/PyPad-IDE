@@ -1135,6 +1135,8 @@ function openPanel(name) {
 }
 function closePanel(name) {
   if (!isPanelOpen(name)) return;
+  // Terminal output is ephemeral — clear it on close so the next open is fresh.
+  if (name === 'terminal') termClear();
   unmount(name);
   applyLayout(); rebuildTabs();
   saveLayout();
@@ -1600,6 +1602,9 @@ async function runCode() {
 
   // Open terminal first so output goes to the bottom slot
   if (!panels.terminal.opened) openPanel('terminal');
+
+  // Each run starts with a clean terminal — previous output is discarded.
+  termClear();
 
   // Pre-flight: scan + auto-fix + show what's left (problems lands at right)
   const issues = detectIssues();
