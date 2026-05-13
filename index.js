@@ -2174,6 +2174,15 @@ function openSettings() {
             <button class="mini-btn" id="setClearAll" data-tip="Clear all stored data"><svg><use href="#i-trash"/></svg></button>
           </div>
         </div>
+
+        <div class="set-section set-about">
+          <div class="set-about-line">
+            &copy; ${new Date().getFullYear()}
+            <a href="https://dimitrisofikitis.com" target="_blank" rel="noopener noreferrer">Dimitris Sofikitis</a>
+            &nbsp;&middot;&nbsp;
+            <a href="https://github.com/dSofikitis/PyPad-IDE/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT License</a>
+          </div>
+        </div>
       </div>
   `, { cls: 'settings-sheet' });
 

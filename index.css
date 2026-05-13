@@ -1594,6 +1594,25 @@ svg, svg * { cursor: inherit; pointer-events: none; }
 .settings-sheet { width: min(560px, 100%); }
 .set-section { padding: 14px 18px 8px; border-bottom: 1px solid var(--glass-inset); }
 .set-section:last-child { border-bottom: none; }
+
+/* About footer at the bottom of the settings sheet */
+.set-about { padding: 14px 18px 18px; text-align: center; }
+.set-about-line {
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: .04em;
+  line-height: 1.6;
+}
+.set-about-line a {
+  color: var(--text-dim);
+  border-bottom: 1px dotted var(--line);
+  padding-bottom: 1px;
+  transition: color .15s, border-color .15s;
+}
+.set-about-line a:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
 .set-label {
   font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
   color: var(--dim); margin-bottom: 8px; font-weight: 600;
