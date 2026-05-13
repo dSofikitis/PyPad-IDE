@@ -29,9 +29,10 @@
       --text-dim: #aaaaaa;
       --dim: #777777;
       --line: rgba(224, 224, 224, 0.08);
-      --accent: #cc0000;
-      --accent-dim: #660000;
-      --accent-glow: rgba(204, 0, 0, 0.18);
+      --accent: #ff3b3b;
+      --accent-rgb: 255, 59, 59;
+      --accent-dim: rgba(255, 59, 59, 0.16);
+      --accent-glow: rgba(255, 59, 59, 0.28);
       --cyan: #00d4aa;
       --blue: #448aff;
       --amber: #ffab00;
@@ -69,27 +70,30 @@
 
     [data-theme="light"] {
       color-scheme: light;
-      --bg: #f0f0f0;
-      --bg-1: #ebebeb;
-      --bg-2: #e3e3e3;
-      --text: #1a1a1a;
-      --text-dim: #444444;
-      --dim: #888888;
-      --line: rgba(0, 0, 0, 0.08);
+      /* Real light theme — pure white surfaces, no gray washing. */
+      --bg: #ffffff;
+      --bg-1: #ffffff;
+      --bg-2: #ffffff;
+      --text: #14181f;
+      --text-dim: #3a4252;
+      --dim: #9ba3b5;
+      --line: rgba(20, 24, 31, 0.07);
       --accent: #cc0000;
-      --accent-dim: #ffcccc;
-      --accent-glow: rgba(204, 0, 0, 0.18);
-      --cyan: #009688;
-      --blue: #1565c0;
-      --amber: #e65100;
-      --purple: #7b1fa2;
-      --green: #009688;
-      --glass-bg: rgba(255, 255, 255, 0.65);
-      --glass-bg-strong: rgba(255, 255, 255, 0.85);
-      --glass-border: rgba(0, 0, 0, 0.08);
-      --glass-inset: rgba(0, 0, 0, 0.03);
+      --accent-rgb: 204, 0, 0;
+      --accent-dim: rgba(var(--accent-rgb),0.10);
+      --accent-glow: rgba(var(--accent-rgb),0.22);
+      --cyan: #0e7490;
+      --blue: #0a66c2;
+      --amber: #b45309;
+      --purple: #6b1bb6;
+      --green: #06814e;
+      --glass-bg: rgba(255, 255, 255, 0.88);
+      --glass-bg-strong: rgba(255, 255, 255, 0.96);
+      --glass-border: rgba(20, 24, 31, 0.06);
+      --glass-inset: rgba(20, 24, 31, 0.025);
       --text-glow: 255, 255, 255;
-      /* No light-theme cursor overrides — strokes are red and read on either bg. */
+      --shadow-1: 0 2px 10px rgba(20, 24, 31, 0.06), 0 1px 2px rgba(20, 24, 31, 0.04);
+      --shadow-2: 0 12px 32px rgba(20, 24, 31, 0.10), 0 4px 12px rgba(20, 24, 31, 0.06);
     }
 
     * {
@@ -165,6 +169,23 @@
     button:disabled,
     .icon-btn:disabled,
     .sheet-btn:disabled { cursor: not-allowed; }
+
+    /* SVG icons inside controls must not steal hits or cursor.
+       Without this, hovering an icon glyph can fall onto the <svg>/<use>/<path>
+       (whose default cursor is system arrow), producing flicker as the pointer
+       crosses stroke pixels. */
+    /* ─── Cursor safety net ───
+       Universal `cursor: inherit` so that NO element can ever fall back to
+       a UA-default system cursor — every element follows its parent unless
+       an explicit rule below claims it. Specificity is (0,0,0), so any
+       specific cursor rule (button → pointer, .src → text, etc.) wins. */
+    * { cursor: inherit; }
+
+    /* Roots define the base cursor for everything else to inherit from. */
+    html, body { cursor: var(--cur-default); }
+
+    /* SVG content never intercepts hits and always inherits cursor. */
+    svg, svg * { cursor: inherit; pointer-events: none; }
 
     /* ── Ambient field (subtle red drift) ── */
     #field {
@@ -274,7 +295,7 @@
     }
 
     .file-pill:hover {
-      border-color: rgba(204, 0, 0, .2);
+      border-color: rgba(var(--accent-rgb),.2);
       color: var(--text);
     }
 
@@ -302,9 +323,9 @@
 
     .icon-btn:hover {
       color: var(--accent);
-      background: rgba(204, 0, 0, .06);
-      border-color: rgba(204, 0, 0, .15);
-      box-shadow: 0 0 14px rgba(204, 0, 0, .08);
+      background: rgba(var(--accent-rgb),.06);
+      border-color: rgba(var(--accent-rgb),.15);
+      box-shadow: 0 0 14px rgba(var(--accent-rgb),.08);
     }
 
     .icon-btn:active {
@@ -313,8 +334,8 @@
 
     .icon-btn.active {
       color: var(--accent);
-      background: rgba(204, 0, 0, .10);
-      border-color: rgba(204, 0, 0, .25);
+      background: rgba(var(--accent-rgb),.10);
+      border-color: rgba(var(--accent-rgb),.25);
     }
 
     .icon-btn.running {
@@ -426,7 +447,7 @@
 
     .side-head .mini-btn:hover {
       color: var(--accent);
-      background: rgba(204, 0, 0, .08);
+      background: rgba(var(--accent-rgb),.08);
     }
 
     .side-head .mini-btn svg {
@@ -466,7 +487,7 @@
     }
 
     .tree-item.active {
-      background: rgba(204, 0, 0, .08);
+      background: rgba(var(--accent-rgb),.08);
       color: var(--text);
       box-shadow: inset 2px 0 0 var(--accent);
     }
@@ -583,7 +604,8 @@
       position: relative;
       overflow: hidden;
       display: flex;
-      background: var(--bg);
+      background: var(--editor-bg, var(--bg));
+      transition: background .25s;
     }
 
     .gutter {
@@ -591,7 +613,7 @@
       width: 44px;
       padding: 10px 0;
       text-align: right;
-      background: var(--bg);
+      background: var(--editor-bg, var(--bg));
       border-right: 1px solid var(--glass-border);
       font-size: 10.5px;
       color: var(--dim);
@@ -647,9 +669,9 @@
       position: relative;
       overflow: hidden;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      line-height: 18px;
-      tab-size: 4;
+      font-size: var(--code-fs, 13px);
+      line-height: calc(var(--code-fs, 13px) + 5px);
+      tab-size: var(--tab-w, 4);
     }
 
     .hl,
@@ -659,10 +681,10 @@
       margin: 0;
       padding: 10px 16px 80px;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 13px;
-      line-height: 18px;
-      tab-size: 4;
-      -moz-tab-size: 4;
+      font-size: var(--code-fs, 13px);
+      line-height: calc(var(--code-fs, 13px) + 5px);
+      tab-size: var(--tab-w, 4);
+      -moz-tab-size: var(--tab-w, 4);
       white-space: pre;
       word-wrap: normal;
       overflow-wrap: normal;
@@ -683,7 +705,7 @@
 
     .hl {
       pointer-events: none;
-      color: var(--text-dim);
+      color: var(--editor-fg, var(--text-dim));
       z-index: 1;
     }
 
@@ -712,16 +734,16 @@
     }
 
     .src::-webkit-scrollbar-thumb {
-      background: rgba(204, 0, 0, .18);
+      background: rgba(var(--accent-rgb),.18);
       border-radius: 3px;
     }
 
     .src::-webkit-scrollbar-thumb:hover {
-      background: rgba(204, 0, 0, .35);
+      background: rgba(var(--accent-rgb),.35);
     }
 
     .src::selection {
-      background: rgba(204, 0, 0, .28);
+      background: rgba(var(--accent-rgb),.28);
       -webkit-text-fill-color: var(--text);
     }
 
@@ -780,6 +802,16 @@
 
     .tk-self {
       color: var(--tk-self);
+    }
+
+    /* Unknown / undefined identifier — red wavy underline beneath the token.
+       The underline is drawn against the highlight <pre> (the visible layer);
+       the transparent textarea above keeps the caret rendering on top. */
+    .tk-unk {
+      text-decoration: var(--accent) wavy underline;
+      text-decoration-skip-ink: none;
+      text-underline-offset: 2px;
+      text-decoration-thickness: 1px;
     }
 
     /* ── Right panel ── */
@@ -846,20 +878,46 @@
 
     .panel-head .ptab.active {
       color: var(--text);
-      background: rgba(204, 0, 0, .08);
+      background: var(--accent-dim);
     }
+    [data-theme="dark"] .panel-head .ptab.active { background: rgba(255, 255, 255, .06); box-shadow: inset 0 -2px 0 var(--accent); }
+    [data-theme="light"] .panel-head .ptab.active { box-shadow: inset 0 -2px 0 var(--accent); }
 
     .panel-head .ptab svg {
       width: 13px;
       height: 13px;
     }
 
+    .panel-head .ptab .tab-close {
+      width: 16px; height: 16px; border-radius: 4px;
+      display: inline-flex; align-items: center; justify-content: center;
+      margin-left: 4px; color: var(--dim);
+      transition: color .12s, background .12s, opacity .12s;
+      opacity: 0;
+    }
+    .panel-head .ptab:hover .tab-close,
+    .panel-head .ptab.active .tab-close { opacity: 1; }
+    .panel-head .ptab .tab-close:hover { color: #fff; background: var(--accent); }
+    .panel-head .ptab .tab-close svg { width: 10px; height: 10px; }
+
+    /* Drag state on tabs */
+    .panel-head .ptab[draggable="true"] { user-select: none; }
+    .panel-head .ptab.dragging { opacity: .4; }
+    /* Drop indicator (vertical bar between tabs) */
+    .panel-head .ptab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+    .panel-head .ptab.drop-after  { box-shadow: inset -2px 0 0 var(--accent); }
+    /* Whole-slot drop highlight */
+    .right-panel.drop-target, .bottom-panel.drop-target {
+      box-shadow: inset 0 0 0 2px var(--accent), 0 0 24px var(--accent-glow);
+    }
+    .panel-head.drop-target { background: var(--accent-dim); }
+
     .panel-head .ptab .count {
       font-size: 9px;
       padding: 1px 5px;
       border-radius: 8px;
       letter-spacing: 0;
-      background: rgba(204, 0, 0, .18);
+      background: rgba(var(--accent-rgb),.18);
       color: var(--accent);
     }
 
@@ -885,7 +943,7 @@
 
     .panel-head .ph-action:hover {
       color: var(--accent);
-      background: rgba(204, 0, 0, .08);
+      background: rgba(var(--accent-rgb),.08);
     }
 
     .panel-head .ph-action svg {
@@ -993,7 +1051,7 @@
       font-size: 9.5px;
       padding: 2px 7px;
       border-radius: 10px;
-      background: rgba(204, 0, 0, .10);
+      background: rgba(var(--accent-rgb),.10);
       color: var(--accent);
       letter-spacing: .1em;
       text-transform: uppercase;
@@ -1039,7 +1097,7 @@
       font-size: 9.5px; padding: 2px 8px; border-radius: 999px;
       letter-spacing: .06em; text-transform: uppercase; font-weight: 600;
     }
-    .pb-chip.err   { background: rgba(204,0,0,.16);   color: var(--accent); box-shadow: 0 0 14px rgba(204,0,0,.18) inset; }
+    .pb-chip.err   { background: rgba(var(--accent-rgb),.16);   color: var(--accent); box-shadow: 0 0 14px rgba(var(--accent-rgb),.18) inset; }
     .pb-chip.warn  { background: rgba(255,171,0,.16); color: var(--amber);  box-shadow: 0 0 14px rgba(255,171,0,.16) inset; }
     .pb-chip.info  { background: rgba(0,212,170,.14); color: var(--cyan);   box-shadow: 0 0 14px rgba(0,212,170,.14) inset; }
     .pb-manual { font-size: 10px; color: var(--dim); letter-spacing: .08em; text-transform: uppercase; }
@@ -1048,10 +1106,10 @@
       padding: 6px 12px; border-radius: 999px;
       background: linear-gradient(135deg, var(--accent), #ff3344);
       color: #fff; font-weight: 700; font-size: 10.5px; letter-spacing: .08em;
-      box-shadow: 0 4px 16px rgba(204,0,0,.35);
+      box-shadow: 0 4px 16px rgba(var(--accent-rgb),.35);
       transition: transform .15s, box-shadow .25s, filter .15s;
     }
-    .pb-fix-all:hover { box-shadow: 0 4px 20px rgba(204,0,0,.55), 0 0 24px rgba(204,0,0,.25); filter: brightness(1.06); }
+    .pb-fix-all:hover { box-shadow: 0 4px 20px rgba(var(--accent-rgb),.55), 0 0 24px rgba(var(--accent-rgb),.25); filter: brightness(1.06); }
     .pb-fix-all:active { transform: scale(.96); }
     .pb-fix-all svg { width: 12px; height: 12px; }
 
@@ -1076,7 +1134,7 @@
     .prob.warn::before { background: var(--amber); }
     .prob.info::before { background: var(--cyan); }
     .prob:hover { background: var(--glass-inset); }
-    .prob.err:hover  { box-shadow: inset 0 0 0 1px rgba(204,0,0,.18); }
+    .prob.err:hover  { box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb),.18); }
     .prob.warn:hover { box-shadow: inset 0 0 0 1px rgba(255,171,0,.18); }
     .prob.info:hover { box-shadow: inset 0 0 0 1px rgba(0,212,170,.18); }
     .prob .pi { flex-shrink: 0; margin-top: 1px; }
@@ -1085,7 +1143,7 @@
     .prob-msg {
       font-size: 12px; line-height: 1.45; color: var(--text);
     }
-    .prob.err  .prob-msg { text-shadow: 0 0 12px rgba(204,0,0,.25); }
+    .prob.err  .prob-msg { text-shadow: 0 0 12px rgba(var(--accent-rgb),.25); }
     .prob.warn .prob-msg { text-shadow: 0 0 12px rgba(255,171,0,.20); }
     .prob.info .prob-msg { text-shadow: 0 0 12px rgba(0,212,170,.18); }
     .prob-meta {
@@ -1115,7 +1173,7 @@
     .prob-btn.jump:hover { color: var(--text); background: var(--glass-inset); border-color: var(--glass-border); }
     .prob-btn.fix:hover  {
       color: #fff; background: var(--accent); border-color: var(--accent);
-      box-shadow: 0 0 16px rgba(204,0,0,.4);
+      box-shadow: 0 0 16px rgba(var(--accent-rgb),.4);
     }
     .prob-btn:active { transform: scale(.9); }
 
@@ -1305,7 +1363,7 @@
     }
 
     .toast.err {
-      box-shadow: var(--shadow-1), 0 0 18px rgba(204, 0, 0, .25);
+      box-shadow: var(--shadow-1), 0 0 18px rgba(var(--accent-rgb),.25);
     }
 
     /* ═══════════════════════════════════════════════════════════════
@@ -1367,7 +1425,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(204, 0, 0, .10);
+      background: rgba(var(--accent-rgb),.10);
       color: var(--accent);
       flex-shrink: 0;
     }
@@ -1398,7 +1456,7 @@
 
     .sheet-head .sh-close:hover {
       color: var(--accent);
-      background: rgba(204, 0, 0, .08);
+      background: rgba(var(--accent-rgb),.08);
     }
 
     .sheet-head .sh-close svg {
@@ -1454,8 +1512,8 @@
 
     .sheet-input:focus,
     .sheet-textarea:focus {
-      border-color: rgba(204, 0, 0, .4);
-      background: rgba(204, 0, 0, .04);
+      border-color: rgba(var(--accent-rgb),.4);
+      background: rgba(var(--accent-rgb),.04);
     }
 
     .sheet-textarea {
@@ -1479,8 +1537,8 @@
       margin: 0 18px 8px;
       padding: 8px 10px;
       border-radius: 8px;
-      background: rgba(204, 0, 0, .10);
-      border: 1px solid rgba(204, 0, 0, .25);
+      background: rgba(var(--accent-rgb),.10);
+      border: 1px solid rgba(var(--accent-rgb),.25);
       font-size: 11px;
       color: #ff7a8a;
       display: none;
@@ -1504,11 +1562,11 @@
       font-size: 12px;
       letter-spacing: .08em;
       transition: opacity .15s, transform .15s, box-shadow .25s;
-      box-shadow: 0 4px 16px rgba(204, 0, 0, .25);
+      box-shadow: 0 4px 16px rgba(var(--accent-rgb),.25);
     }
 
     .sheet-btn:hover {
-      box-shadow: 0 4px 20px rgba(204, 0, 0, .45);
+      box-shadow: 0 4px 20px rgba(var(--accent-rgb),.45);
     }
 
     .sheet-btn:active {
@@ -1524,6 +1582,135 @@
       width: 14px;
       height: 14px;
     }
+
+    /* ── Settings sheet ── */
+    .settings-sheet { width: min(560px, 100%); }
+    .set-section { padding: 14px 18px 8px; border-bottom: 1px solid var(--glass-inset); }
+    .set-section:last-child { border-bottom: none; }
+    .set-label {
+      font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
+      color: var(--dim); margin-bottom: 8px; font-weight: 600;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .set-label svg { width: 11px; height: 11px; }
+
+    /* Segmented radio (theme picker) */
+    .seg {
+      display: inline-flex; padding: 3px; gap: 2px;
+      background: var(--glass-inset); border: 1px solid var(--glass-border);
+      border-radius: 999px;
+    }
+    .seg-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 14px; border-radius: 999px;
+      font-size: 11px; color: var(--text-dim); letter-spacing: .04em;
+      transition: color .15s, background .15s, box-shadow .2s;
+    }
+    .seg-item svg { width: 13px; height: 13px; }
+    .seg-item:hover { color: var(--text); }
+    .seg-item.on {
+      background: var(--accent); color: #fff;
+      box-shadow: 0 4px 14px var(--accent-glow);
+    }
+
+    /* Accent swatches */
+    .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+    .swatch {
+      width: 36px; height: 36px; border-radius: 50%;
+      position: relative; transition: transform .15s, box-shadow .25s;
+      border: 2px solid transparent;
+    }
+    .swatch::before {
+      content: ''; position: absolute; inset: 3px; border-radius: 50%;
+      background: var(--c); box-shadow: inset 0 0 0 1px rgba(0,0,0,.1);
+    }
+    .swatch:hover { transform: translateY(-2px); }
+    .swatch.on {
+      border-color: var(--c);
+      box-shadow: 0 4px 14px color-mix(in srgb, var(--c) 35%, transparent);
+    }
+    .swatch.on::after {
+      content: ''; position: absolute; inset: 11px; border-radius: 50%;
+      background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.1);
+    }
+
+    /* Editor theme preview cards */
+    .theme-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 540px) { .theme-grid { grid-template-columns: 1fr; } }
+    .theme-card {
+      border: 1.5px solid var(--glass-border); border-radius: 10px;
+      overflow: hidden; transition: border-color .15s, transform .15s, box-shadow .25s;
+      background: var(--glass-inset);
+      /* <button> defaults to text-align:center which mis-centered preview code */
+      text-align: left;
+    }
+    .theme-card:hover { transform: translateY(-2px); }
+    .theme-card.on {
+      border-color: var(--accent);
+      box-shadow: 0 6px 18px var(--accent-glow);
+    }
+    .theme-preview {
+      padding: 6px 9px; font-family: 'JetBrains Mono', monospace;
+      font-size: 7.5px; line-height: 10.5px; white-space: pre;
+      overflow: hidden; height: 64px;
+      text-align: left;
+      font-variant-ligatures: none;
+      font-feature-settings: "liga" 0, "calt" 0;
+    }
+    .theme-name {
+      padding: 4px 10px; font-size: 10px; color: var(--text-dim);
+      letter-spacing: .05em; display: flex; align-items: center; justify-content: space-between;
+      background: var(--glass-bg);
+      border-top: 1px solid var(--glass-border);
+    }
+    .theme-name .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dim); }
+    .theme-card.on .theme-name .dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .theme-card.is-follow .theme-preview { position: relative; }
+    .theme-follow-badge {
+      position: absolute; top: 6px; right: 6px;
+      width: 18px; height: 18px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent); color: #fff;
+      box-shadow: 0 2px 6px var(--accent-glow);
+    }
+    .theme-follow-badge svg { width: 10px; height: 10px; }
+
+    /* Sliders + numeric controls */
+    .set-row {
+      display: flex; align-items: center; gap: 14px; padding: 6px 0;
+    }
+    .set-row .set-row-label { flex: 1; font-size: 11px; color: var(--text); }
+    .set-row .set-row-hint { font-size: 9.5px; color: var(--dim); margin-top: 2px; }
+    .set-stepper {
+      display: inline-flex; align-items: center;
+      background: var(--glass-inset); border: 1px solid var(--glass-border);
+      border-radius: 8px; overflow: hidden;
+    }
+    .set-stepper button {
+      width: 26px; height: 26px; color: var(--text-dim);
+      transition: color .15s, background .15s;
+    }
+    .set-stepper button:hover { color: var(--accent); background: var(--glass-inset); }
+    .set-stepper .val {
+      min-width: 30px; text-align: center; font-size: 11.5px;
+      color: var(--text); font-variant-numeric: tabular-nums;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      width: 36px; height: 20px; border-radius: 999px;
+      background: var(--glass-inset); border: 1px solid var(--glass-border);
+      position: relative; transition: background .2s, border-color .2s;
+      flex-shrink: 0;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 1px; left: 1px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--text-dim);
+      transition: left .2s cubic-bezier(.23,1,.32,1), background .2s;
+    }
+    .toggle.on { background: var(--accent); border-color: var(--accent); }
+    .toggle.on::after { left: 17px; background: #fff; }
 
     .sheet-list-item {
       display: flex;
@@ -1700,7 +1887,7 @@
     .mkbd-retract.show { display: flex; opacity: 1; }
     .mkbd-retract:hover {
       color: var(--accent);
-      border-color: rgba(204,0,0,.25);
+      border-color: rgba(var(--accent-rgb),.25);
       box-shadow: var(--shadow-1), 0 0 18px var(--accent-glow);
       transform: translateY(-2px);
     }
@@ -1734,7 +1921,7 @@
     }
 
     .mk:active {
-      background: rgba(204, 0, 0, .15);
+      background: rgba(var(--accent-rgb),.15);
       transform: scale(.94);
       color: var(--accent);
     }
@@ -1769,8 +1956,8 @@
     .mk.shift-on,
     .mk.lock-on {
       color: var(--accent);
-      border-color: rgba(204, 0, 0, .3);
-      background: rgba(204, 0, 0, .06);
+      border-color: rgba(var(--accent-rgb),.3);
+      background: rgba(var(--accent-rgb),.06);
     }
 
     .mk.shift-on::after {
@@ -1821,7 +2008,7 @@
     }
 
     .mkbd-inline .mki:active {
-      background: rgba(204, 0, 0, .2);
+      background: rgba(var(--accent-rgb),.2);
     }
 
     /* show keyboard for touch / small screens */
@@ -2010,7 +2197,7 @@
 
     /* selection */
     ::selection {
-      background: rgba(204, 0, 0, .25);
+      background: rgba(var(--accent-rgb),.25);
     }
   </style>
 </head>
@@ -2080,9 +2267,14 @@
           d="M10 17 3 11l1.5-5.5L7 11l3-7.5 3 7.5 2.5-5.5L17 11z" />
       </symbol>
       <symbol id="i-settings" viewBox="0 0 20 20">
-        <circle cx="10" cy="10" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4" />
-        <path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"
-          d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.6 1.6M13.7 13.7l1.6 1.6M15.3 4.7l-1.6 1.6M6.3 13.7l-1.6 1.6" />
+        <!-- sliders icon — three rails with knobs at different positions; visually
+             unambiguous as "preferences" and impossible to confuse with the sun. -->
+        <line x1="3" y1="5.5"  x2="17" y2="5.5"  stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <line x1="3" y1="10"   x2="17" y2="10"   stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <line x1="3" y1="14.5" x2="17" y2="14.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        <circle cx="13" cy="5.5"  r="2" fill="currentColor"/>
+        <circle cx="7"  cy="10"   r="2" fill="currentColor"/>
+        <circle cx="14" cy="14.5" r="2" fill="currentColor"/>
       </symbol>
       <symbol id="i-sun" viewBox="0 0 20 20">
         <circle cx="10" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.4" />
@@ -2171,6 +2363,11 @@
         <path fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"
           d="M10 3 4 10h3v6.5a.5.5 0 0 0 .5.5h5a.5.5 0 0 0 .5-.5V10h3z" />
       </symbol>
+      <symbol id="i-monitor" viewBox="0 0 20 20">
+        <rect x="2.5" y="3.5" width="15" height="10.5" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4" />
+        <line x1="6.5" y1="17.2" x2="13.5" y2="17.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+        <line x1="10" y1="14" x2="10" y2="17.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+      </symbol>
       <symbol id="i-keyboard" viewBox="0 0 20 20">
         <rect x="2.5" y="6" width="15" height="9" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.4" />
         <line x1="5" y1="9" x2="5.3" y2="9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
@@ -2258,6 +2455,9 @@
         </svg>
         <span class="badge-dot" id="glDot"></span>
       </button>
+      <button class="icon-btn" id="btnSettings" data-tip="Settings"><svg>
+          <use href="#i-settings" />
+        </svg></button>
       <button class="icon-btn" id="btnTheme" data-tip="Toggle theme"><svg id="themeIcon">
           <use href="#i-sun" />
         </svg></button>
@@ -2330,35 +2530,34 @@
         </div>
       </section>
 
-      <!-- RIGHT PANEL -->
+      <!-- RIGHT PANEL — supports multiple tabs identical to bottom -->
       <aside class="right-panel" id="rightPanel">
         <div class="right-panel-inner">
-          <div class="panel-head">
-            <div class="ptab active" id="rTabTitle"><svg>
-                <use href="#i-problems" />
-              </svg> <span>Problems</span></div>
+          <div class="panel-head" id="rTabs" data-slot="right">
             <div class="ph-spacer"></div>
-            <button class="ph-action" id="rDock" data-tip="Move to bottom"><svg>
+            <button class="ph-action" id="rDock" data-tip="Move active to bottom"><svg>
                 <use href="#i-chevron-down" />
               </svg></button>
-            <button class="ph-action" id="rClose" data-tip="Close"><svg>
+            <button class="ph-action" id="rClose" data-tip="Close active"><svg>
                 <use href="#i-close" />
               </svg></button>
           </div>
-          <div class="panel-body" id="rightBody"></div>
+          <div class="panel-body" id="rightBody" data-slot="right"></div>
         </div>
       </aside>
 
       <!-- BOTTOM PANEL -->
       <section class="bottom-panel" id="bottomPanel">
-        <div class="panel-head" id="bTabs">
-          <!-- tabs injected by JS based on what's docked here -->
+        <div class="panel-head" id="bTabs" data-slot="bottom">
           <div class="ph-spacer"></div>
-          <button class="ph-action" id="bClose" data-tip="Close"><svg>
+          <button class="ph-action" id="bDock" data-tip="Move active to right"><svg>
+              <use href="#i-up" />
+            </svg></button>
+          <button class="ph-action" id="bClose" data-tip="Close active"><svg>
               <use href="#i-close" />
             </svg></button>
         </div>
-        <div class="panel-body" id="bottomBody"></div>
+        <div class="panel-body" id="bottomBody" data-slot="bottom"></div>
       </section>
 
     </main>
@@ -2440,9 +2639,175 @@
   <script>
     "use strict";
 
+    /* ══════════════════════════════════════════════════════════════
+       PREFERENCES — persistent user settings (localStorage)
+       ══════════════════════════════════════════════════════════════ */
+    const PREFS_KEY = 'pypad-prefs-v1';
+    const defaultPrefs = {
+      theme: 'system',            // 'dark' | 'light' | 'system'
+      accent: 'red',              // ACCENTS key
+      editorTheme: 'pypad',       // EDITOR_THEMES key
+      tabWidth: 4,
+      fontSize: 13,
+      kbdAlwaysOn: false,
+      sidebarOpen: false,
+      layout: null,               // panel slot snapshot {bottom: [...], right: [...], activeBottom, activeRight}
+    };
+    let prefs = loadPrefs();
+    function loadPrefs() {
+      try { return Object.assign({}, defaultPrefs, JSON.parse(localStorage.getItem(PREFS_KEY) || '{}')); }
+      catch { return { ...defaultPrefs }; }
+    }
+    function savePrefs() { try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch {} }
+    function setPref(key, value) {
+      prefs[key] = value; savePrefs();
+      if (key === 'theme')       applyTheme();
+      if (key === 'accent')      applyAccent();
+      if (key === 'editorTheme') applyEditorTheme();
+      if (key === 'tabWidth')    applyTabWidth();
+      if (key === 'fontSize')    applyFontSize();
+    }
+
+    /* ── Accent palette ── each accent has separate dark / light variants.
+       Dark variants are brighter & saturated for visibility on dark chrome;
+       light variants are deeper / less neon for legibility on white. */
+    const ACCENTS = {
+      red:     { name: 'Red',
+        dark:  { main: '#ff3b3b', rgb: '255,59,59'    },
+        light: { main: '#cc0000', rgb: '204,0,0'      } },
+      blue:    { name: 'Blue',
+        dark:  { main: '#5b9bff', rgb: '91,155,255'   },
+        light: { main: '#0a66c2', rgb: '10,102,194'   } },
+      magenta: { name: 'Magenta',
+        dark:  { main: '#ff5dbf', rgb: '255,93,191'   },
+        light: { main: '#c2185b', rgb: '194,24,91'    } },
+      orange:  { name: 'Orange',
+        dark:  { main: '#ff9540', rgb: '255,149,64'   },
+        light: { main: '#d35400', rgb: '211,84,0'     } },
+      green:   { name: 'Green',
+        dark:  { main: '#3ddc8b', rgb: '61,220,139'   },
+        light: { main: '#06814e', rgb: '6,129,78'     } },
+      purple:  { name: 'Purple',
+        dark:  { main: '#b388ff', rgb: '179,136,255'  },
+        light: { main: '#6a1b9a', rgb: '106,27,154'   } },
+      cyan:    { name: 'Cyan',
+        dark:  { main: '#22d3ee', rgb: '34,211,238'   },
+        light: { main: '#0e7490', rgb: '14,116,144'   } },
+      amber:   { name: 'Amber',
+        dark:  { main: '#fbbf24', rgb: '251,191,36'   },
+        light: { main: '#b45309', rgb: '180,83,9'     } },
+    };
+    function currentMode() {
+      if (prefs.theme === 'system') return _systemMql.matches ? 'light' : 'dark';
+      return prefs.theme;
+    }
+    function accentVariant(key) {
+      const a = ACCENTS[key] || ACCENTS.red;
+      return a[currentMode()] || a.dark;
+    }
+
+    /* ── Editor themes — bg + token overrides ──
+       `auto` follows the IDE chrome theme: dark → PyPad, light → GitHub Light. */
+    const EDITOR_THEMES = {
+      auto: {
+        name: 'Follow IDE', follow: true,
+      },
+      pypad: {
+        name: 'PyPad', isDark: true, bg: '#000000', fg: '#e0e0e0',
+        tokens: { kw: '#cc0000', fn: '#448aff', str: '#00d4aa', num: '#ffab00', cmt: '#777777', dec: '#b388ff', cls: '#ffab00', op: '#aaaaaa', self: '#b388ff', bi: '#448aff' },
+      },
+      midnight: {
+        name: 'Midnight', isDark: true, bg: '#0e1525', fg: '#dbe7ff',
+        tokens: { kw: '#ff79c6', fn: '#82aaff', str: '#a5e075', num: '#ffcb6b', cmt: '#546e94', dec: '#c792ea', cls: '#ffcb6b', op: '#89ddff', self: '#c792ea', bi: '#82aaff' },
+      },
+      solarized: {
+        name: 'Solarized Dark', isDark: true, bg: '#002b36', fg: '#93a1a1',
+        tokens: { kw: '#cb4b16', fn: '#268bd2', str: '#2aa198', num: '#b58900', cmt: '#586e75', dec: '#6c71c4', cls: '#b58900', op: '#93a1a1', self: '#6c71c4', bi: '#268bd2' },
+      },
+      dracula: {
+        name: 'Dracula', isDark: true, bg: '#282a36', fg: '#f8f8f2',
+        tokens: { kw: '#ff79c6', fn: '#50fa7b', str: '#f1fa8c', num: '#bd93f9', cmt: '#6272a4', dec: '#ffb86c', cls: '#8be9fd', op: '#ff79c6', self: '#bd93f9', bi: '#8be9fd' },
+      },
+      'github-light': {
+        name: 'GitHub Light', isDark: false, bg: '#ffffff', fg: '#1f2328',
+        tokens: { kw: '#cf222e', fn: '#8250df', str: '#0a3069', num: '#0550ae', cmt: '#6e7781', dec: '#953800', cls: '#953800', op: '#24292f', self: '#953800', bi: '#0550ae' },
+      },
+    };
+
+    /* ── Apply functions (define stubs early; real impls below) ── */
+    let _systemMql = matchMedia('(prefers-color-scheme: light)');
+    function applyTheme() {
+      let mode = prefs.theme;
+      if (mode === 'system') mode = _systemMql.matches ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', mode);
+      // Topbar button reflects the *selected* preference, not the resolved mode,
+      // so the user can see at a glance whether System / Light / Dark is active.
+      const tIcon = document.getElementById('themeIcon');
+      const tBtn  = document.getElementById('btnTheme');
+      const iconKey = prefs.theme === 'system' ? 'i-monitor'
+                  : prefs.theme === 'light'  ? 'i-sun'
+                  :                            'i-moon';
+      if (tIcon) tIcon.innerHTML = `<use href="#${iconKey}"/>`;
+      if (tBtn)  tBtn.setAttribute('data-tip',
+        prefs.theme === 'system' ? 'Theme: System' :
+        prefs.theme === 'light'  ? 'Theme: Light'  : 'Theme: Dark');
+      // Re-pick accent variant + auto-follow editor theme for the new mode
+      if (typeof applyAccent === 'function') applyAccent();
+      if (typeof applyEditorTheme === 'function') applyEditorTheme();
+    }
+    _systemMql.addEventListener?.('change', () => { if (prefs.theme === 'system') applyTheme(); });
+
+    function applyAccent() {
+      const v = accentVariant(prefs.accent);
+      const r = document.documentElement.style;
+      r.setProperty('--accent', v.main);
+      r.setProperty('--accent-rgb', v.rgb);
+      r.setProperty('--accent-dim',  `rgba(${v.rgb}, 0.12)`);
+      r.setProperty('--accent-glow', `rgba(${v.rgb}, 0.26)`);
+      rebuildCursors(v.main);
+      _accentRgb = v.rgb;
+    }
+    function rebuildCursors(hex) {
+      const h = hex.replace('#', '%23');
+      const def = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M5 1L1 1L1 5' fill='none' stroke='${h}' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M10 6L6 6L6 10' fill='none' stroke='${h}' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round' opacity='0.55'/%3E%3Cpath d='M15 11L11 11L11 15' fill='none' stroke='${h}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' opacity='0.25'/%3E%3C/svg%3E`;
+      const ptr = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cline x1='8' y1='1' x2='8' y2='3' stroke='${h}' stroke-width='1.4' stroke-linecap='round'/%3E%3Cline x1='8' y1='13' x2='8' y2='15' stroke='${h}' stroke-width='1.4' stroke-linecap='round'/%3E%3Cline x1='1' y1='8' x2='3' y2='8' stroke='${h}' stroke-width='1.4' stroke-linecap='round'/%3E%3Cline x1='13' y1='8' x2='15' y2='8' stroke='${h}' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M8 4L12 8L8 12L4 8Z' fill='none' stroke='${h}' stroke-width='1.4' stroke-linejoin='round'/%3E%3Crect x='6.5' y='6.5' width='3' height='3' fill='${h}'/%3E%3C/svg%3E`;
+      const txt = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='18' viewBox='0 0 16 18'%3E%3Cline x1='10' y1='2' x2='10' y2='16' stroke='${h}' stroke-width='1.8' stroke-linecap='round'/%3E%3Cline x1='7' y1='3' x2='13' y2='3' stroke='${h}' stroke-width='1.4' stroke-linecap='round'/%3E%3Cline x1='7' y1='15' x2='13' y2='15' stroke='${h}' stroke-width='1.4' stroke-linecap='round'/%3E%3Cpath d='M2 6L5 9L2 12' fill='none' stroke='${h}' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E`;
+      const r = document.documentElement.style;
+      r.setProperty('--cur-default', `url("${def}") 1 1, default`);
+      r.setProperty('--cur-pointer', `url("${ptr}") 8 8, pointer`);
+      r.setProperty('--cur-text',    `url("${txt}") 10 9, text`);
+    }
+    /* Resolve an editor-theme key, following IDE chrome when `auto` is selected. */
+    function resolveEditorTheme(key) {
+      const t = EDITOR_THEMES[key] || EDITOR_THEMES.pypad;
+      if (t.follow) return currentMode() === 'light' ? EDITOR_THEMES['github-light'] : EDITOR_THEMES.pypad;
+      return t;
+    }
+    function applyEditorTheme() {
+      const t = resolveEditorTheme(prefs.editorTheme);
+      const r = document.documentElement.style;
+      r.setProperty('--editor-bg', t.bg);
+      r.setProperty('--editor-fg', t.fg);
+      Object.entries(t.tokens).forEach(([k, v]) => r.setProperty(`--tk-${k}`, v));
+      document.documentElement.setAttribute('data-editor-theme', prefs.editorTheme);
+    }
+    function applyTabWidth() {
+      document.documentElement.style.setProperty('--tab-w', prefs.tabWidth);
+    }
+    function applyFontSize() {
+      document.documentElement.style.setProperty('--code-fs', prefs.fontSize + 'px');
+    }
+
     /* ──────────────────────────────────────────────────────────────
-       AMBIENT FIELD — slow red drifting dots (matches the website)
+       AMBIENT FIELD — slow drifting accent-colored dots
        ────────────────────────────────────────────────────────────── */
+    let _accentRgb = '204,0,0';
+    function hexToRgb(hex) {
+      const m = hex.replace('#', '').match(/^([0-9a-f]{6})$/i);
+      if (!m) return null;
+      const n = parseInt(m[1], 16);
+      return `${(n >> 16) & 255},${(n >> 8) & 255},${n & 255}`;
+    }
     (function () {
       const c = document.getElementById('field'); const ctx = c.getContext('2d');
       let w, h, dots = [];
@@ -2466,7 +2831,7 @@
         ctx.clearRect(0, 0, w, h);
         dots.forEach(d => {
           d.x = (d.x + d.vx + w) % w; d.y = (d.y + d.vy + h) % h;
-          ctx.fillStyle = `rgba(204,0,0,${d.a * .35})`;
+          ctx.fillStyle = `rgba(${_accentRgb},${d.a * .35})`;
           ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill();
         });
         requestAnimationFrame(tick);
@@ -2539,24 +2904,183 @@
     ]);
     const PY_BI = new Set([
       'print', 'len', 'range', 'enumerate', 'open', 'sum', 'min', 'max', 'list', 'dict', 'set', 'tuple',
-      'str', 'int', 'float', 'bool', 'bytes', 'isinstance', 'type', 'input', 'sorted', 'map', 'filter', 'zip', 'abs', 'round'
+      'str', 'int', 'float', 'bool', 'bytes', 'isinstance', 'type', 'input', 'sorted', 'map', 'filter', 'zip', 'abs', 'round',
+      'super', 'object', 'property', 'staticmethod', 'classmethod', 'iter', 'next', 'hash', 'id',
+      'callable', 'repr', 'ord', 'chr', 'reversed', 'all', 'any', 'divmod', 'pow', 'vars',
+      'globals', 'locals', 'getattr', 'setattr', 'hasattr', 'delattr', 'issubclass',
+      'frozenset', 'bytearray', 'memoryview', 'complex', 'format', 'slice',
+      'Exception', 'BaseException', 'ValueError', 'TypeError', 'KeyError', 'IndexError',
+      'AttributeError', 'RuntimeError', 'StopIteration', 'ArithmeticError', 'AssertionError',
+      'OSError', 'NameError', 'ZeroDivisionError', 'NotImplementedError', 'FileNotFoundError',
+      'ImportError', 'ModuleNotFoundError', 'LookupError', 'UnicodeError', 'OverflowError',
+    ]);
+    const PY_DUNDERS = new Set([
+      '__name__', '__main__', '__file__', '__init__', '__doc__', '__all__',
+      '__repr__', '__str__', '__eq__', '__hash__', '__len__', '__iter__', '__next__',
+      '__enter__', '__exit__', '__getitem__', '__setitem__', '__call__', '__future__',
     ]);
 
     function escHtml(s) {
       return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    /* Tokenize a python source string into highlighted HTML */
-    function tokenizePython(code) {
-      // line-by-line for triple-quoted handling we just do per-line; good enough
+    /* Strip strings and comments from a line so identifier matching can run
+       against code-only text. Replaces them with spaces to preserve column. */
+    function stripStringsAndComments(line) {
+      let out = ''; let str = null;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (str) {
+          if (c === '\\' && i + 1 < line.length) { out += '  '; i++; continue; }
+          out += ' ';
+          if (c === str) str = null;
+          continue;
+        }
+        if (c === '#') { out += ' '.repeat(line.length - i); break; }
+        if (c === '"' || c === "'") { str = c; out += ' '; continue; }
+        out += c;
+      }
+      return out;
+    }
+
+    /* Collect every name defined anywhere in the file (best-effort, no AST).
+       Wildcard imports return null → caller should disable unknown-name lint. */
+    function getDefinedNames(code) {
+      const defined = new Set([
+        'self', 'cls', '_',
+      ]);
+      PY_BI.forEach(b => defined.add(b));
+      PY_DUNDERS.forEach(b => defined.add(b));
+      let wildcard = false;
+      const lines = code.split('\n');
+      lines.forEach(line => {
+        const s = stripStringsAndComments(line);
+        // import X, import X as Y, import X.Y
+        const im = s.match(/^\s*import\s+(.+)$/);
+        if (im) {
+          im[1].split(',').forEach(spec => {
+            const t = spec.trim(); if (!t) return;
+            const asM = t.match(/^(\S+)\s+as\s+([A-Za-z_]\w*)$/);
+            if (asM) defined.add(asM[2]);
+            else defined.add(t.split('.')[0].trim());
+          });
+        }
+        // from X import a, b as c, *
+        const fr = s.match(/^\s*from\s+\S+\s+import\s+(.+)$/);
+        if (fr) {
+          const after = fr[1].replace(/^\(|\)$/g, '');
+          after.split(',').forEach(spec => {
+            const t = spec.trim(); if (!t) return;
+            if (t === '*') { wildcard = true; return; }
+            const asM = t.match(/^([A-Za-z_]\w*)\s+as\s+([A-Za-z_]\w*)$/);
+            defined.add(asM ? asM[2] : t.match(/^([A-Za-z_]\w*)/)?.[1] || t);
+          });
+        }
+        // def / async def
+        const fn = s.match(/^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(([^)]*)\)/);
+        if (fn) {
+          defined.add(fn[1]);
+          fn[2].split(',').forEach(p => {
+            const m = p.replace(/[:=].*$/, '').trim().match(/^\*{0,2}\s*([A-Za-z_]\w*)/);
+            if (m) defined.add(m[1]);
+          });
+        }
+        // class
+        const cl = s.match(/^\s*class\s+([A-Za-z_]\w*)/);
+        if (cl) defined.add(cl[1]);
+        // for X in ..., scattered (also catches comprehensions like [x for x in y])
+        [...s.matchAll(/\bfor\s+([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s+in\s+/g)].forEach(m => {
+          m[1].split(',').forEach(t => {
+            const id = t.trim().match(/^([A-Za-z_]\w*)/);
+            if (id) defined.add(id[1]);
+          });
+        });
+        // with X as Y, with X as (a, b)
+        [...s.matchAll(/\bas\s+([A-Za-z_]\w*)/g)].forEach(m => defined.add(m[1]));
+        // lambda X: ...
+        [...s.matchAll(/\blambda\s+([^:]+):/g)].forEach(m => {
+          m[1].split(',').forEach(p => {
+            const id = p.trim().match(/^([A-Za-z_]\w*)/);
+            if (id) defined.add(id[1]);
+          });
+        });
+        // walrus operator :=
+        [...s.matchAll(/\b([A-Za-z_]\w*)\s*:=/g)].forEach(m => defined.add(m[1]));
+        // global / nonlocal
+        const gn = s.match(/^\s*(?:global|nonlocal)\s+(.+)$/);
+        if (gn) gn[1].split(',').forEach(n => {
+          const id = n.trim().match(/^([A-Za-z_]\w*)/);
+          if (id) defined.add(id[1]);
+        });
+        // assignment: lhs = rhs (incl tuple unpacking)
+        // detect anything left of an '=' that's not '==', '!=', '<=', '>=', '+=', etc.
+        // skip lines that begin with a control keyword
+        if (!/^\s*(?:if|elif|while|for|return|yield|raise|with|try|except|finally|import|from|assert|del|pass|break|continue)\b/.test(s)) {
+          // walk: find first unparenthesized '=' that isn't part of ==, !=, <=, >=, +=, -=, *=, /=, %=, |=, &=, ^=, >>=, <<=, **=, //=, :=
+          let depth = 0, eqIdx = -1;
+          for (let i = 0; i < s.length; i++) {
+            const c = s[i];
+            if (c === '(' || c === '[' || c === '{') depth++;
+            else if (c === ')' || c === ']' || c === '}') depth--;
+            else if (c === '=' && depth === 0) {
+              const prev = s[i - 1] || ''; const next = s[i + 1] || '';
+              if ('=!<>+-*/%|&^:'.includes(prev)) continue;
+              if (next === '=') { i++; continue; }
+              eqIdx = i; break;
+            }
+          }
+          if (eqIdx > 0) {
+            const lhs = s.slice(0, eqIdx);
+            [...lhs.matchAll(/([A-Za-z_]\w*)/g)].forEach(m => {
+              const at = m.index;
+              if (at > 0 && lhs[at - 1] === '.') return; // attribute, not new name
+              if (at > 0 && lhs[at - 1] === ']') return; // subscript target
+              defined.add(m[1]);
+            });
+          }
+        }
+      });
+      return wildcard ? null : defined;
+    }
+
+    /* Find unknown name references across the file. Returns [{line, col, name}]. */
+    function getUnknownNames(code) {
+      const defined = getDefinedNames(code);
+      if (!defined) return [];           // wildcard import — bail
+      const unknowns = [];
+      const lines = code.split('\n');
+      lines.forEach((line, li) => {
+        const s = stripStringsAndComments(line);
+        [...s.matchAll(/\b([A-Za-z_]\w*)\b/g)].forEach(m => {
+          const word = m[1]; const idx = m.index;
+          if (idx > 0 && s[idx - 1] === '.') return;          // attribute access
+          if (PY_KW.has(word)) return;
+          if (defined.has(word)) return;
+          // skip number-like (already covered by \b) and pure digit-like
+          if (/^\d/.test(word)) return;
+          // skip identifiers immediately followed by '=' (assignment / kwarg)
+          let after = idx + word.length;
+          while (after < s.length && s[after] === ' ') after++;
+          if (s[after] === '=' && s[after + 1] !== '=') return;
+          // skip when used as a kwarg in a call: identifier followed by '='
+          // (handled above). Already-defined check covers most.
+          unknowns.push({ line: li + 1, col: idx + 1, name: word });
+        });
+      });
+      return unknowns;
+    }
+
+    /* Tokenize a python source string into highlighted HTML.
+       `defined` is a Set of known names — identifiers outside it get .tk-unk
+       (red wavy underline). Pass null to disable unknown-name marking. */
+    function tokenizePython(code, defined) {
       let out = '';
       const lines = code.split('\n');
-      let inTriple = null; // null or "'''" / '"""'
+      let inTriple = null;
       for (let li = 0; li < lines.length; li++) {
         const line = lines[li];
         let i = 0; let buf = '';
         while (i < line.length) {
-          // inside triple string spanning lines
           if (inTriple) {
             const idx = line.indexOf(inTriple, i);
             if (idx === -1) { buf += `<span class="tk-str">${escHtml(line.slice(i))}</span>`; i = line.length; }
@@ -2565,7 +3089,6 @@
           }
           const ch = line[i]; const two = line.slice(i, i + 3);
           if (two === '"""' || two === "'''") {
-            // search end on same line
             const end = line.indexOf(two, i + 3);
             if (end === -1) { buf += `<span class="tk-str">${escHtml(line.slice(i))}</span>`; inTriple = two; i = line.length; }
             else { buf += `<span class="tk-str">${escHtml(line.slice(i, end + 3))}</span>`; i = end + 3; }
@@ -2573,13 +3096,11 @@
           }
           if (ch === '#') { buf += `<span class="tk-cmt">${escHtml(line.slice(i))}</span>`; break; }
           if (ch === '"' || ch === "'") {
-            // single-line string
             const q = ch; let j = i + 1; let esc = false;
             while (j < line.length) { const c = line[j]; if (esc) { esc = false; j++; continue; } if (c === '\\') { esc = true; j++; continue; } if (c === q) { j++; break; } j++; }
             buf += `<span class="tk-str">${escHtml(line.slice(i, j))}</span>`; i = j; continue;
           }
           if (ch === '@') {
-            // decorator: @ + identifier
             let j = i + 1; while (j < line.length && /[A-Za-z_0-9.]/.test(line[j])) j++;
             buf += `<span class="tk-dec">${escHtml(line.slice(i, j))}</span>`; i = j; continue;
           }
@@ -2590,20 +3111,29 @@
           if (/[A-Za-z_]/.test(ch)) {
             let j = i; while (j < line.length && /[A-Za-z_0-9]/.test(line[j])) j++;
             const word = line.slice(i, j);
-            if (word === 'self' || word === 'cls') buf += `<span class="tk-self">${word}</span>`;
-            else if (PY_KW.has(word)) buf += `<span class="tk-kw">${word}</span>`;
-            else if (PY_BI.has(word)) {
-              // builtins look like fn only if followed by (
-              let k = j; while (k < line.length && line[k] === ' ') k++;
-              if (line[k] === '(') buf += `<span class="tk-bi">${word}</span>`;
-              else buf += `<span class="tk-bi">${word}</span>`;
-            } else if (/^[A-Z]/.test(word)) buf += `<span class="tk-cls">${word}</span>`;
-            else {
-              // function call detection
-              let k = j; while (k < line.length && line[k] === ' ') k++;
-              if (line[k] === '(') buf += `<span class="tk-fn">${word}</span>`;
-              else buf += word;
+            // attribute? preceded by `.`
+            const isAttr = i > 0 && line[i - 1] === '.';
+            // look-ahead for `=` (assignment / kwarg) or `(` (call)
+            let k = j; while (k < line.length && line[k] === ' ') k++;
+            const followedByCall   = line[k] === '(';
+            const followedByAssign = line[k] === '=' && line[k + 1] !== '=';
+
+            let cls = '';
+            if (word === 'self' || word === 'cls') cls = 'tk-self';
+            else if (PY_KW.has(word)) cls = 'tk-kw';
+            else if (PY_BI.has(word)) cls = 'tk-bi';
+            else if (isAttr) cls = followedByCall ? 'tk-fn' : '';
+            else if (/^[A-Z]/.test(word)) cls = 'tk-cls';
+            else if (followedByCall) cls = 'tk-fn';
+            // mark unknown if we have a definitions list and this identifier
+            // is not in it (and isn't an assignment target / kwarg / attribute)
+            if (defined && !isAttr && !followedByAssign &&
+                !PY_KW.has(word) && !PY_BI.has(word) &&
+                word !== 'self' && word !== 'cls' && !defined.has(word) &&
+                !PY_DUNDERS.has(word)) {
+              cls = (cls + ' tk-unk').trim();
             }
+            buf += cls ? `<span class="${cls}">${word}</span>` : word;
             i = j; continue;
           }
           if (/[+\-*/%=<>!&|^~]/.test(ch)) {
@@ -2618,7 +3148,8 @@
 
     function renderHighlight() {
       const code = src.value;
-      hl.innerHTML = tokenizePython(code) + '\n';
+      const defined = getDefinedNames(code);   // null if wildcard import present
+      hl.innerHTML = tokenizePython(code, defined) + '\n';
       ph.style.display = code.length === 0 ? 'block' : 'none';
       renderGutter();
       updateCursorPos();
@@ -2859,11 +3390,10 @@
     /* ──────────────────────────────────────────────────────────────
        PANEL ADAPTIVE PLACEMENT — terminal / problems
        ────────────────────────────────────────────────────────────── */
-    const workspace = document.getElementById('workspace');
+    const workspace  = document.getElementById('workspace');
     const bottomBody = document.getElementById('bottomBody');
     const bottomTabs = document.getElementById('bTabs');
-    const rightBody = document.getElementById('rightBody');
-    const rTabTitle = document.getElementById('rTabTitle');
+    const rightBody  = document.getElementById('rightBody');
 
     const panels = { terminal: { where: null, opened: false }, problems: { where: null, opened: false } };
     // where: 'bottom' | 'right' | null
@@ -2873,143 +3403,269 @@
       problems: { icon: 'i-problems', label: 'Problems' },
     };
 
-    /* Mount a panel's content into bottom or right slot */
-    function mountInto(panel, slot) {
-      const node = panelNodes[panel];
+    /* ── Slot model ──
+       Both `bottom` and `right` slots have an ordered tab list. A panel can
+       live in at most one slot. Drag/drop reorders within a slot and moves
+       between slots. */
+    const slotOrder = { bottom: [], right: [] };
+    const slotActive = { bottom: null, right: null };
+
+    const rTabs = document.getElementById('rTabs');
+    const rightPanelEl  = document.getElementById('rightPanel');
+    const bottomPanelEl = document.getElementById('bottomPanel');
+
+    function panelSlot(name) { return panels[name].where; }
+    function isPanelOpen(name) { return !!panels[name].where; }
+
+    function mountInto(name, slot, indexOrEnd) {
+      const node = panelNodes[name];
       node.style.display = '';
       if (slot === 'bottom') bottomBody.appendChild(node);
       else if (slot === 'right') rightBody.appendChild(node);
-      panels[panel].where = slot;
-      panels[panel].opened = true;
+      panels[name].where = slot;
+      panels[name].opened = true;
+      // maintain slot order list
+      const list = slotOrder[slot];
+      if (!list.includes(name)) {
+        if (typeof indexOrEnd === 'number' && indexOrEnd >= 0 && indexOrEnd <= list.length) {
+          list.splice(indexOrEnd, 0, name);
+        } else {
+          list.push(name);
+        }
+      }
+      if (!slotActive[slot]) slotActive[slot] = name;
     }
-    function unmount(panel) {
-      const node = panelNodes[panel];
+
+    function unmount(name) {
+      const node = panelNodes[name];
       if (node.parentElement) node.parentElement.removeChild(node);
-      panels[panel].where = null;
-      panels[panel].opened = false;
+      const oldSlot = panels[name].where;
+      panels[name].where = null;
+      panels[name].opened = false;
+      if (oldSlot) {
+        const list = slotOrder[oldSlot];
+        const i = list.indexOf(name); if (i >= 0) list.splice(i, 1);
+        if (slotActive[oldSlot] === name) slotActive[oldSlot] = list[0] || null;
+      }
     }
 
     function openPanel(name) {
-      if (panels[name].opened) {
-        focusPanel(name); return;
-      }
-      // Adaptive placement:
-      // If bottom is empty -> open in bottom
-      // Else if right is empty -> open in right
-      // Else (both full) -> replace whatever is on right
-      const other = Object.keys(panels).find(k => k !== name && panels[k].opened);
+      if (isPanelOpen(name)) { setActive(name); focusPanel(name); return; }
+      // Adaptive placement
       let slot;
-      if (!other) slot = 'bottom';
-      else if (panels[other].where === 'bottom') slot = 'right';
-      else slot = 'bottom';
+      if (!slotOrder.bottom.length) slot = 'bottom';
+      else if (!slotOrder.right.length) slot = 'right';
+      else slot = 'right';
       mountInto(name, slot);
-      applyLayout();
-      rebuildTabs();
-      flashJustOpened();
-      focusPanel(name);
+      slotActive[slot] = name;
+      applyLayout(); rebuildTabs(); flashJustOpened(); focusPanel(name);
+      saveLayout();
     }
     function closePanel(name) {
-      if (!panels[name].opened) return;
+      if (!isPanelOpen(name)) return;
       unmount(name);
-      applyLayout();
-      rebuildTabs();
+      applyLayout(); rebuildTabs();
+      saveLayout();
     }
-    function togglePanel(name) {
-      if (panels[name].opened) closePanel(name); else openPanel(name);
-    }
+    function togglePanel(name) { isPanelOpen(name) ? closePanel(name) : openPanel(name); }
     function focusPanel(name) {
-      if (name === 'terminal') {
-        const inp = panelNodes.terminal.querySelector('.term-in'); if (inp) inp.focus();
-      }
+      if (name === 'terminal') panelNodes.terminal.querySelector('.term-in')?.focus();
+    }
+    function setActive(name) {
+      const slot = panels[name].where; if (!slot) return;
+      slotActive[slot] = name; rebuildTabs(); focusPanel(name); saveLayout();
     }
     function flashJustOpened() {
-      const bp = document.getElementById('bottomPanel'); const rp = document.getElementById('rightPanel');
-      bp.classList.remove('just-opened'); rp.classList.remove('just-opened');
-      void bp.offsetWidth; void rp.offsetWidth;
-      if (Object.values(panels).some(p => p.where === 'bottom')) bp.classList.add('just-opened');
-      if (Object.values(panels).some(p => p.where === 'right')) rp.classList.add('just-opened');
+      bottomPanelEl.classList.remove('just-opened');
+      rightPanelEl.classList.remove('just-opened');
+      void bottomPanelEl.offsetWidth; void rightPanelEl.offsetWidth;
+      if (slotOrder.bottom.length) bottomPanelEl.classList.add('just-opened');
+      if (slotOrder.right.length)  rightPanelEl.classList.add('just-opened');
     }
 
-    /* Move a panel to a specific slot (used by the dock button) */
-    function dockPanel(name, slot) {
-      if (!panels[name].opened) return;
-      // free target slot if needed (swap)
-      const occupant = Object.keys(panels).find(k => k !== name && panels[k].where === slot);
-      unmount(name);
-      if (occupant) {
-        const oldSlot = panels[name].where === slot ? 'bottom' : (slot === 'bottom' ? 'right' : 'bottom');
-        unmount(occupant);
-        mountInto(occupant, oldSlot);
+    /* Move a panel to a target slot at an optional index. Swaps slots when needed. */
+    function movePanel(name, targetSlot, targetIndex) {
+      if (!isPanelOpen(name)) return;
+      const fromSlot = panels[name].where;
+      if (fromSlot === targetSlot) {
+        // reorder within slot
+        const list = slotOrder[targetSlot];
+        const i = list.indexOf(name); if (i < 0) return;
+        list.splice(i, 1);
+        const newIdx = (typeof targetIndex === 'number')
+          ? Math.max(0, Math.min(targetIndex, list.length))
+          : list.length;
+        list.splice(newIdx, 0, name);
+      } else {
+        unmount(name);
+        mountInto(name, targetSlot, targetIndex);
       }
-      mountInto(name, slot);
-      applyLayout(); rebuildTabs(); focusPanel(name);
+      slotActive[targetSlot] = name;
+      applyLayout(); rebuildTabs(); focusPanel(name); saveLayout();
+    }
+
+    /* Move active panel of a slot to the other slot (used by the dock buttons). */
+    function dockActiveTo(fromSlot, toSlot) {
+      const active = slotActive[fromSlot]; if (!active) return;
+      movePanel(active, toSlot);
     }
 
     function applyLayout() {
-      const bottomOpen = Object.values(panels).some(p => p.where === 'bottom');
-      const rightOpen = Object.values(panels).some(p => p.where === 'right');
+      const bottomOpen = slotOrder.bottom.length > 0;
+      const rightOpen  = slotOrder.right.length > 0;
       workspace.setAttribute('data-bottom', bottomOpen ? 'open' : 'closed');
-      workspace.setAttribute('data-right', rightOpen ? 'open' : 'closed');
-      // mirror toggle state on header buttons
-      document.getElementById('btnTerm').classList.toggle('active', panels.terminal.opened);
-      document.getElementById('btnProblems').classList.toggle('active', panels.problems.opened);
+      workspace.setAttribute('data-right',  rightOpen  ? 'open' : 'closed');
+      document.getElementById('btnTerm').classList.toggle('active',     isPanelOpen('terminal'));
+      document.getElementById('btnProblems').classList.toggle('active', isPanelOpen('problems'));
     }
 
-    /* Re-render the bottom tabs (could be 0, 1, or 2 panels in bottom) */
+    /* Build a tab DOM node. Wires click → setActive, X → close, drag handlers. */
+    function buildTab(name, slot, isActive) {
+      const def = PANEL_DEF[name];
+      const tab = document.createElement('div');
+      tab.className = 'ptab' + (isActive ? ' active' : '');
+      tab.draggable = true;
+      tab.dataset.panel = name;
+      tab.dataset.slot  = slot;
+      tab.innerHTML = `
+        <svg><use href="#${def.icon}"/></svg>
+        <span>${def.label}</span>
+        <span class="tab-close" data-tip="Close"><svg><use href="#i-close"/></svg></span>`;
+      tab.addEventListener('click', (e) => {
+        if (e.target.closest('.tab-close')) return;
+        setActive(name);
+      });
+      tab.querySelector('.tab-close').addEventListener('click', (e) => {
+        e.stopPropagation(); closePanel(name);
+      });
+      attachDragHandlers(tab);
+      return tab;
+    }
+
     function rebuildTabs() {
-      // bottom tab strip = whichever panels are docked at bottom
-      const bottomList = Object.keys(panels).filter(k => panels[k].where === 'bottom');
-      const rightList = Object.keys(panels).filter(k => panels[k].where === 'right');
-
-      // bottom: rebuild left side of tab strip
-      const ph = bottomTabs.querySelector('.ph-spacer');
-      // clear all tab nodes (keep spacer + close button)
-      [...bottomTabs.querySelectorAll('.ptab')].forEach(n => n.remove());
-      // insert tabs before spacer
-      bottomList.forEach((k, i) => {
-        const def = PANEL_DEF[k];
-        const tab = document.createElement('div');
-        tab.className = 'ptab' + (i === activeBottomIdx() ? ' active' : '');
-        tab.innerHTML = `<svg><use href="#${def.icon}"/></svg><span>${def.label}</span>`;
-        tab.dataset.panel = k;
-        tab.onclick = () => { setActiveBottom(k); };
-        bottomTabs.insertBefore(tab, ph);
-      });
-      // bottom panel body: show only active panel
-      Object.keys(panels).forEach(k => {
-        if (panels[k].where === 'bottom') {
-          panelNodes[k].style.display = (k === activeBottomKey()) ? '' : 'none';
-        }
+      ['bottom', 'right'].forEach(slot => {
+        const strip = slot === 'bottom' ? bottomTabs : rTabs;
+        const spacer = strip.querySelector('.ph-spacer');
+        [...strip.querySelectorAll('.ptab')].forEach(n => n.remove());
+        const active = activeIn(slot);
+        slotOrder[slot].forEach(name => {
+          const tab = buildTab(name, slot, name === active);
+          strip.insertBefore(tab, spacer);
+        });
+        // body display: show only active panel
+        Object.keys(panels).forEach(name => {
+          if (panels[name].where === slot) {
+            panelNodes[name].style.display = (name === active) ? '' : 'none';
+          }
+        });
       });
 
-      // right: update title (single panel)
-      const rkey = rightList[0];
-      if (rkey) {
-        const def = PANEL_DEF[rkey];
-        rTabTitle.innerHTML = `<svg><use href="#${def.icon}"/></svg> <span>${def.label}</span>`;
-        rTabTitle.dataset.panel = rkey;
-        document.getElementById('rDock').setAttribute('data-tip', 'Move to bottom');
-        document.getElementById('rDock').onclick = () => dockPanel(rkey, 'bottom');
-        document.getElementById('rClose').onclick = () => closePanel(rkey);
-      }
-      // bottom close button: closes active panel
-      document.getElementById('bClose').onclick = () => {
-        const k = activeBottomKey(); if (k) closePanel(k);
-      };
+      // dock buttons
+      document.getElementById('rDock').onclick = () => dockActiveTo('right', 'bottom');
+      document.getElementById('bDock').onclick = () => dockActiveTo('bottom', 'right');
+      document.getElementById('rClose').onclick = () => { const k = activeIn('right'); if (k) closePanel(k); };
+      document.getElementById('bClose').onclick = () => { const k = activeIn('bottom'); if (k) closePanel(k); };
     }
 
-    let bottomActive = null;
-    function activeBottomKey() {
-      const list = Object.keys(panels).filter(k => panels[k].where === 'bottom');
-      if (!list.length) return null;
-      if (bottomActive && list.includes(bottomActive)) return bottomActive;
+    function activeIn(slot) {
+      const list = slotOrder[slot]; if (!list.length) return null;
+      if (slotActive[slot] && list.includes(slotActive[slot])) return slotActive[slot];
       return list[0];
     }
-    function activeBottomIdx() {
-      const list = Object.keys(panels).filter(k => panels[k].where === 'bottom');
-      return list.indexOf(activeBottomKey());
+
+    /* ── Drag and drop ── */
+    let dragName = null;
+    function attachDragHandlers(tab) {
+      tab.addEventListener('dragstart', (e) => {
+        dragName = tab.dataset.panel;
+        try { e.dataTransfer.setData('text/plain', dragName); } catch {}
+        e.dataTransfer.effectAllowed = 'move';
+        tab.classList.add('dragging');
+      });
+      tab.addEventListener('dragend', () => {
+        dragName = null;
+        document.querySelectorAll('.dragging').forEach(n => n.classList.remove('dragging'));
+        clearDropMarkers();
+      });
+      tab.addEventListener('dragover', (e) => {
+        if (!dragName) return;
+        e.preventDefault();
+        const r = tab.getBoundingClientRect();
+        const before = (e.clientX - r.left) < r.width / 2;
+        clearDropMarkers();
+        tab.classList.add(before ? 'drop-before' : 'drop-after');
+      });
+      tab.addEventListener('drop', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (!dragName) return;
+        const slot = tab.dataset.slot;
+        const list = slotOrder[slot];
+        const targetIdx = list.indexOf(tab.dataset.panel);
+        const r = tab.getBoundingClientRect();
+        const before = (e.clientX - r.left) < r.width / 2;
+        let insertAt = before ? targetIdx : targetIdx + 1;
+        // when reordering in the same slot, adjust for removal of the source
+        if (panels[dragName].where === slot) {
+          const fromIdx = list.indexOf(dragName);
+          if (fromIdx >= 0 && fromIdx < insertAt) insertAt--;
+        }
+        movePanel(dragName, slot, insertAt);
+        clearDropMarkers();
+      });
     }
-    function setActiveBottom(k) { bottomActive = k; rebuildTabs(); }
+    function clearDropMarkers() {
+      document.querySelectorAll('.drop-before,.drop-after,.drop-target').forEach(n => {
+        n.classList.remove('drop-before', 'drop-after', 'drop-target');
+      });
+    }
+    /* Allow dropping onto the slot tabstrip (append) or body (move to that slot). */
+    function attachSlotDropTargets() {
+      const targets = [
+        { el: bottomTabs,     slot: 'bottom', mode: 'append' },
+        { el: rTabs,          slot: 'right',  mode: 'append' },
+        { el: bottomBody,     slot: 'bottom', mode: 'append' },
+        { el: rightBody,      slot: 'right',  mode: 'append' },
+        { el: bottomPanelEl,  slot: 'bottom', mode: 'append' },
+        { el: rightPanelEl,   slot: 'right',  mode: 'append' },
+      ];
+      targets.forEach(({ el, slot }) => {
+        el.addEventListener('dragover', (e) => {
+          if (!dragName) return;
+          // only react if not on a tab (tabs handle their own)
+          if (e.target.closest('.ptab')) return;
+          e.preventDefault();
+          el.classList.add('drop-target');
+        });
+        el.addEventListener('dragleave', (e) => {
+          if (!e.relatedTarget || !el.contains(e.relatedTarget)) el.classList.remove('drop-target');
+        });
+        el.addEventListener('drop', (e) => {
+          if (!dragName) return;
+          if (e.target.closest('.ptab')) return;
+          e.preventDefault();
+          movePanel(dragName, slot, slotOrder[slot].length);
+          clearDropMarkers();
+        });
+      });
+    }
+
+    /* ── Persist + restore layout ── */
+    function saveLayout() {
+      prefs.layout = {
+        bottom: [...slotOrder.bottom],
+        right:  [...slotOrder.right],
+        activeBottom: slotActive.bottom,
+        activeRight:  slotActive.right,
+      };
+      savePrefs();
+    }
+    function restoreLayout() {
+      const L = prefs.layout; if (!L) return;
+      (L.bottom || []).forEach(name => { if (panels[name]) mountInto(name, 'bottom'); });
+      (L.right  || []).forEach(name => { if (panels[name]) mountInto(name, 'right'); });
+      if (L.activeBottom && slotOrder.bottom.includes(L.activeBottom)) slotActive.bottom = L.activeBottom;
+      if (L.activeRight  && slotOrder.right.includes(L.activeRight))   slotActive.right  = L.activeRight;
+    }
 
     /* ──────────────────────────────────────────────────────────────
        TERMINAL — Pyodide-backed REPL + shell helpers + js eval
@@ -3336,6 +3992,8 @@ except BaseException:
       let id = 0;
       lines.forEach((line, i) => {
         const ln = i + 1;
+        const s = stripStringsAndComments(line);
+
         if (/\t/.test(line)) {
           out.push({ id: ++id, kind: 'tabs', sev: 'warn', line: ln, rule: 'W191', msg: 'Tab character — prefer 4 spaces', fixable: true });
         }
@@ -3368,6 +4026,51 @@ except BaseException:
         if (line.length > 120) {
           out.push({ id: ++id, kind: 'long_line', sev: 'info', line: ln, rule: 'E501', msg: `Line too long (${line.length} > 120)`, fixable: false });
         }
+
+        /* ── Extra rules ── */
+
+        // Bare except (no exception class) — swallows everything including SystemExit/KeyboardInterrupt
+        if (/^\s*except\s*:\s*$/.test(s)) {
+          out.push({ id: ++id, kind: 'bare_except', sev: 'warn', line: ln, rule: 'E722',
+            msg: 'Bare except — catch a specific exception class instead', fixable: false });
+        }
+
+        // `== None` / `!= None` should be `is None` / `is not None`
+        const cmpNone = s.match(/(==|!=)\s*None\b|\bNone\s*(==|!=)/);
+        if (cmpNone) {
+          out.push({ id: ++id, kind: 'cmp_none', sev: 'warn', line: ln, rule: 'E711',
+            msg: "Comparison to None should use 'is' / 'is not'", fixable: false });
+        }
+
+        // `== True/False` should be implicit
+        const cmpBool = s.match(/(==|!=)\s*(True|False)\b/);
+        if (cmpBool) {
+          out.push({ id: ++id, kind: 'cmp_bool', sev: 'warn', line: ln, rule: 'E712',
+            msg: `Comparison to ${cmpBool[2]} — use truthiness instead`, fixable: false });
+        }
+
+        // Mutable default argument: def f(x=[]):  or  ={}, =set()
+        const mutDef = s.match(/^\s*(?:async\s+)?def\s+\w+\s*\(([^)]*)\)/);
+        if (mutDef) {
+          const params = mutDef[1];
+          if (/=\s*(\[\s*\]|\{\s*\}|set\(\s*\)|list\(\s*\)|dict\(\s*\))/.test(params)) {
+            out.push({ id: ++id, kind: 'mutable_default', sev: 'warn', line: ln, rule: 'B006',
+              msg: 'Mutable default argument — use None and assign inside the function', fixable: false });
+          }
+        }
+
+        // print as a statement (Python 2) — `print "x"` (no parens)
+        if (/^\s*print\s+[^(]/.test(s)) {
+          out.push({ id: ++id, kind: 'print_statement', sev: 'err', line: ln, rule: 'E999',
+            msg: "Missing parentheses in call to 'print'", fixable: false });
+        }
+      });
+
+      // Whole-file unknown-name detection (NameError-class problems)
+      getUnknownNames(code).forEach(u => {
+        out.push({ id: ++id, kind: 'unknown_name', sev: 'err',
+          line: u.line, col: u.col, rule: 'F821',
+          msg: `Undefined name '${u.name}'`, fixable: false });
       });
 
       if (code.length > 0 && !code.endsWith('\n')) {
@@ -3516,14 +4219,25 @@ except BaseException:
       updateCursorPos();
     }
 
-    let lintT = null;
-    src.addEventListener('input', () => {
-      clearTimeout(lintT);
-      lintT = setTimeout(() => {
+    /* Lint throttling — runs at most once every ~12 s while the buffer is
+       dirty. The editor highlighter (which marks unknowns inline) still runs
+       on every keystroke; this is just for the full Problems panel scan,
+       which can be heavier on larger files. */
+    const LINT_INTERVAL_MS = 12_000;
+    let lintDirty = false;
+    let lintTimer = null;
+    function scheduleLint() {
+      lintDirty = true;
+      if (lintTimer) return;
+      lintTimer = setTimeout(() => {
+        lintTimer = null;
+        if (!lintDirty) return;
+        lintDirty = false;
         lastIssues = detectIssues();
         renderProblems(lastIssues);
-      }, 400);
-    });
+      }, LINT_INTERVAL_MS);
+    }
+    src.addEventListener('input', scheduleLint);
 
     /* ──────────────────────────────────────────────────────────────
        MOBILE KEYBOARD
@@ -3662,13 +4376,162 @@ except BaseException:
     /* ──────────────────────────────────────────────────────────────
        THEME TOGGLE
        ────────────────────────────────────────────────────────────── */
+    /* Topbar theme button cycles dark → light → system */
     document.getElementById('btnTheme').addEventListener('click', () => {
-      const root = document.documentElement;
-      const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      root.setAttribute('data-theme', next);
-      document.getElementById('themeIcon').innerHTML = `<use href="#i-${next === 'light' ? 'moon' : 'sun'}"/>`;
-      toast(next === 'light' ? 'Light theme' : 'Dark theme');
+      const order = ['dark', 'light', 'system'];
+      const i = order.indexOf(prefs.theme);
+      const next = order[(i + 1) % order.length];
+      setPref('theme', next);
+      toast(next === 'system' ? 'System theme' : next === 'light' ? 'Light theme' : 'Dark theme');
     });
+
+    /* ──────────────────────────────────────────────────────────────
+       SETTINGS SHEET
+       ────────────────────────────────────────────────────────────── */
+    const PREVIEW_SNIPPET = [
+      '@dataclass',
+      'class User:',
+      '    """Account holder."""',
+      '    name: str',
+      '    age: int = 0',
+      '',
+      'def greet(u: User) -> str:',
+      '    # welcome line',
+      '    return f"hi, {u.name}!"',
+    ].join('\n');
+
+    function previewHtml(theme) {
+      const t = theme.tokens;
+      const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const span = (cls, s) => `<span style="color:${t[cls]}">${esc(s)}</span>`;
+      return [
+        span('dec', '@dataclass'),
+        `${span('kw', 'class')} ${span('cls', 'User')}:`,
+        `    ${span('str', '"""Account holder."""')}`,
+        `    name: ${span('cls', 'str')}`,
+        `    age: ${span('cls', 'int')} = ${span('num', '0')}`,
+        '',
+        `${span('kw', 'def')} ${span('fn', 'greet')}(u: ${span('cls', 'User')}) -&gt; ${span('cls', 'str')}:`,
+        `    ${span('cmt', '# welcome line')}`,
+        `    ${span('kw', 'return')} ${span('str', 'f"hi, {u.name}!"')}`,
+      ].join('\n');
+    }
+
+    function openSettings() {
+      const segTab = [2, 4, 8].map(v =>
+        `<button class="seg-item${prefs.tabWidth === v ? ' on' : ''}" data-set-tab="${v}">${v}</button>`).join('');
+
+      const swatches = Object.entries(ACCENTS).map(([key, a]) => {
+        const v = a[currentMode()] || a.dark;
+        return `<button class="swatch${prefs.accent === key ? ' on' : ''}"
+                 style="--c:${v.main}" data-tip="${a.name}" data-set-accent="${key}"
+                 aria-label="${a.name}"></button>`;
+      }).join('');
+
+      const themeCards = Object.entries(EDITOR_THEMES).map(([key, t]) => {
+        const eff = t.follow ? resolveEditorTheme(key) : t;
+        const followBadge = t.follow
+          ? `<span class="theme-follow-badge"><svg><use href="#i-monitor"/></svg></span>` : '';
+        return `<button class="theme-card${prefs.editorTheme === key ? ' on' : ''}${t.follow ? ' is-follow' : ''}" data-set-editor-theme="${key}">
+           <div class="theme-preview" style="background:${eff.bg};color:${eff.fg}">${previewHtml(eff)}${followBadge}</div>
+           <div class="theme-name"><span>${t.name}</span><span class="dot"></span></div>
+         </button>`;
+      }).join('');
+
+      openSheet(`
+          <div class="sheet-head">
+            <div class="sh-icon"><svg><use href="#i-settings"/></svg></div>
+            <div class="sh-title">Settings</div>
+            <button class="sh-close" onclick="closeSheet()"><svg><use href="#i-close"/></svg></button>
+          </div>
+          <div class="sheet-body">
+            <div class="set-section">
+              <div class="set-label"><svg><use href="#i-format"/></svg> Accent color</div>
+              <div class="swatches" id="setAccent">${swatches}</div>
+            </div>
+
+            <div class="set-section">
+              <div class="set-label"><svg><use href="#i-py"/></svg> Editor theme</div>
+              <div class="theme-grid" id="setEditorTheme">${themeCards}</div>
+            </div>
+
+            <div class="set-section">
+              <div class="set-label"><svg><use href="#i-format"/></svg> Editor</div>
+              <div class="set-row">
+                <div class="set-row-label">Tab width
+                  <div class="set-row-hint">Number of spaces inserted by Tab</div>
+                </div>
+                <div class="seg" id="setTab">${segTab}</div>
+              </div>
+              <div class="set-row">
+                <div class="set-row-label">Font size
+                  <div class="set-row-hint">Editor font size in pixels</div>
+                </div>
+                <div class="set-stepper">
+                  <button id="setFontDown"><svg><use href="#i-chevron-down"/></svg></button>
+                  <span class="val" id="setFontVal">${prefs.fontSize}</span>
+                  <button id="setFontUp"><svg><use href="#i-up"/></svg></button>
+                </div>
+              </div>
+              <div class="set-row">
+                <div class="set-row-label">Force on-screen keyboard
+                  <div class="set-row-hint">Show PyPad's custom keyboard even on desktop</div>
+                </div>
+                <div class="toggle${prefs.kbdAlwaysOn ? ' on' : ''}" id="setKbdAlways"></div>
+              </div>
+            </div>
+
+            <div class="set-section">
+              <div class="set-label"><svg><use href="#i-info"/></svg> Storage</div>
+              <div class="set-row">
+                <div class="set-row-label">Reset preferences
+                  <div class="set-row-hint">Restore all settings and panel layout to defaults</div>
+                </div>
+                <button class="seg-item" id="setReset" style="border:1px solid var(--glass-border)">Reset</button>
+              </div>
+            </div>
+          </div>
+      `, { cls: 'settings-sheet' });
+
+      // wire interactions
+      const refresh = () => openSettings(); // simple refresh
+
+      document.getElementById('setAccent').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-set-accent]'); if (!b) return;
+        setPref('accent', b.dataset.setAccent);
+        toast(`Accent: ${ACCENTS[b.dataset.setAccent].name}`, 'ok'); refresh();
+      });
+      document.getElementById('setEditorTheme').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-set-editor-theme]'); if (!b) return;
+        setPref('editorTheme', b.dataset.setEditorTheme);
+        toast(`Editor theme: ${EDITOR_THEMES[b.dataset.setEditorTheme].name}`, 'ok'); refresh();
+      });
+      document.getElementById('setTab').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-set-tab]'); if (!b) return;
+        setPref('tabWidth', Number(b.dataset.setTab)); refresh();
+      });
+      document.getElementById('setFontDown').onclick = () => {
+        if (prefs.fontSize > 10) { setPref('fontSize', prefs.fontSize - 1); document.getElementById('setFontVal').textContent = prefs.fontSize; }
+      };
+      document.getElementById('setFontUp').onclick = () => {
+        if (prefs.fontSize < 22) { setPref('fontSize', prefs.fontSize + 1); document.getElementById('setFontVal').textContent = prefs.fontSize; }
+      };
+      document.getElementById('setKbdAlways').addEventListener('click', () => {
+        setPref('kbdAlwaysOn', !prefs.kbdAlwaysOn);
+        kbdForced = prefs.kbdAlwaysOn;
+        if (kbdForced) { src.focus(); openMobileKbd(); } else closeMobileKbd();
+        refresh();
+      });
+      document.getElementById('setReset').onclick = () => {
+        if (!confirm('Reset all preferences and panel layout?')) return;
+        localStorage.removeItem(PREFS_KEY);
+        prefs = { ...defaultPrefs };
+        applyTheme(); applyAccent(); applyEditorTheme(); applyTabWidth(); applyFontSize();
+        toast('Preferences reset', 'ok');
+        closeSheet();
+      };
+    }
+    document.getElementById('btnSettings').addEventListener('click', openSettings);
 
     /* ──────────────────────────────────────────────────────────────
        TOPBAR WIRING
@@ -3680,6 +4543,7 @@ except BaseException:
       const open = workspace.getAttribute('data-side') === 'open';
       workspace.setAttribute('data-side', open ? 'closed' : 'open');
       document.getElementById('btnExplorer').classList.toggle('active', !open);
+      setPref('sidebarOpen', !open);
     });
     document.getElementById('btnTerm').addEventListener('click', () => togglePanel('terminal'));
     document.getElementById('btnProblems').addEventListener('click', () => {
@@ -3706,9 +4570,11 @@ except BaseException:
       });
     }
 
-    function openSheet(html) {
+    function openSheet(html, opts = {}) {
       const ov = document.getElementById('sheetOverlay');
-      document.getElementById('sheetBody').innerHTML = html;
+      const body = document.getElementById('sheetBody');
+      body.className = 'sheet' + (opts.cls ? ' ' + opts.cls : '');
+      body.innerHTML = html;
       ov.classList.add('open');
     }
     function closeSheet() { document.getElementById('sheetOverlay').classList.remove('open'); }
@@ -3954,11 +4820,16 @@ except BaseException:
     /* ──────────────────────────────────────────────────────────────
        INIT
        ────────────────────────────────────────────────────────────── */
+    // apply saved preferences (theme, accent, editor theme, sizing) before paint
+    applyTheme(); applyAccent(); applyEditorTheme(); applyTabWidth(); applyFontSize();
+    if (prefs.kbdAlwaysOn) kbdForced = true;
+    if (prefs.sidebarOpen) { workspace.setAttribute('data-side', 'open'); document.getElementById('btnExplorer').classList.add('active'); }
+    restoreLayout();
+
     renderHighlight(); renderTree(); applyLayout(); rebuildTabs();
+    attachSlotDropTargets();
     // kick off pyodide load in the background
     loadPyodideOnce().catch(() => { });
-    // theme icon initial state
-    document.getElementById('themeIcon').innerHTML = `<use href="#i-sun"/>`;
 
   </script>
 </body>
