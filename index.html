@@ -534,6 +534,26 @@
       font-size: 11px;
       line-height: 1.6;
     }
+    .tree-section { margin-bottom: 6px; }
+    .tree-section-head {
+      display: flex; align-items: center; gap: 4px;
+      padding: 8px 8px 4px 14px;
+      font-size: 9px; color: var(--dim); letter-spacing: .14em; text-transform: uppercase;
+      border-top: 1px solid var(--glass-inset);
+      margin-top: 4px;
+    }
+    .tree-section:first-child .tree-section-head { border-top: none; margin-top: 0; }
+    .tree-section-head .tsh-label {
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      color: var(--text-dim); text-transform: none; letter-spacing: 0; font-size: 11px;
+    }
+    .tree-section-head .tsh-btn {
+      width: 20px; height: 20px; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--dim); transition: color .15s, background .15s;
+    }
+    .tree-section-head .tsh-btn:hover { color: var(--accent); background: var(--glass-inset); }
+    .tree-section-head .tsh-btn svg { width: 11px; height: 11px; }
 
     .tree-empty .hint {
       color: var(--text-dim);
@@ -2444,6 +2464,9 @@
       <button class="icon-btn" id="btnExplorer" data-tip="Explorer"><svg>
           <use href="#i-folder" />
         </svg></button>
+      <button class="icon-btn" id="btnOpenDir" data-tip="Open folder from disk"><svg>
+          <use href="#i-folder-open" />
+        </svg></button>
       <button class="icon-btn" id="btnTerm" data-tip="Terminal · Ctrl+`"><svg>
           <use href="#i-terminal" />
         </svg></button>
@@ -2666,6 +2689,245 @@
       if (key === 'editorTheme') applyEditorTheme();
       if (key === 'tabWidth')    applyTabWidth();
       if (key === 'fontSize')    applyFontSize();
+    }
+
+    /* ══════════════════════════════════════════════════════════════
+       PERSISTENCE — files / GitLab / folder handle
+       Survives refresh; cleared by "clear cookies and site data".
+       ══════════════════════════════════════════════════════════════ */
+    const STORE = {
+      files:  'pypad-files-v1',   // open files + active id (incl. uncommitted gitlab edits)
+      gitlab: 'pypad-gitlab-v1',  // PAT + URL + user + open repo + branch
+    };
+
+    /* Tiny IndexedDB key/value store — used for FileSystemDirectoryHandle
+       which isn't serializable to localStorage. */
+    const idb = (function () {
+      let p;
+      function db() {
+        return p || (p = new Promise((res, rej) => {
+          const r = indexedDB.open('pypad', 1);
+          r.onupgradeneeded = () => r.result.createObjectStore('kv');
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => rej(r.error);
+        }));
+      }
+      return {
+        async get(k) { const d = await db(); return new Promise((res, rej) => { const r = d.transaction('kv').objectStore('kv').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+        async set(k, v) { const d = await db(); return new Promise((res, rej) => { const tx = d.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); },
+        async del(k) { const d = await db(); return new Promise((res, rej) => { const tx = d.transaction('kv', 'readwrite'); tx.objectStore('kv').delete(k); tx.oncomplete = res; tx.onerror = () => rej(tx.error); }); },
+      };
+    })();
+
+    /* Strip non-serializable bits (FileSystemFileHandle) before stringify. */
+    function slimFiles() {
+      return files.map(({ handle, ...rest }) => rest);
+    }
+    let _persistFilesT = null;
+    function persistFiles() {
+      // light debounce so per-keystroke edits don't hammer localStorage
+      clearTimeout(_persistFilesT);
+      _persistFilesT = setTimeout(() => {
+        try { localStorage.setItem(STORE.files, JSON.stringify({ files: slimFiles(), activeId })); } catch {}
+      }, 250);
+    }
+    function loadPersistedFiles() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(STORE.files) || 'null');
+        if (raw && Array.isArray(raw.files)) {
+          raw.files.forEach(f => files.push(f));
+          activeId = raw.activeId || null;
+          return true;
+        }
+      } catch {}
+      return false;
+    }
+
+    function persistGitlab() {
+      try {
+        if (!session.token) { localStorage.removeItem(STORE.gitlab); return; }
+        localStorage.setItem(STORE.gitlab, JSON.stringify({
+          token: session.token, gitlabUrl: session.gitlabUrl,
+          username: session.username, email: session.email,
+          avatarInitial: session.avatarInitial,
+          currentRepo: session.currentRepo, currentBranch: session.currentBranch,
+        }));
+      } catch {}
+    }
+    function loadPersistedGitlab() {
+      try {
+        const data = JSON.parse(localStorage.getItem(STORE.gitlab) || 'null');
+        if (data && data.token) { Object.assign(session, data); return true; }
+      } catch {}
+      return false;
+    }
+
+    function forceDisconnectGitlab() {
+      session.token = null; session.username = null; session.email = null;
+      session.avatarInitial = null; session.currentRepo = null;
+      session.currentBranch = null; session.currentFile = null;
+      try { localStorage.removeItem(STORE.gitlab); } catch {}
+      // Also drop any open gitlab files (their content was edits-only).
+      for (let i = files.length - 1; i >= 0; i--) {
+        if (files[i].source === 'gitlab') {
+          if (files[i].id === activeId) activeId = null;
+          files.splice(i, 1);
+        }
+      }
+      // UI
+      document.getElementById('btnGitlab').classList.remove('active');
+      document.getElementById('stBranch').innerHTML = `<svg><use href="#i-branch"/></svg> local`;
+      document.getElementById('glDot').style.display = '';
+      persistFiles(); renderTree();
+      if (!activeId && files.length === 0) {
+        src.value = '';
+        fileLabel.textContent = 'untitled.py';
+        document.getElementById('bcFile').textContent = 'untitled.py';
+        renderHighlight();
+      }
+    }
+    function closeRepo() {
+      session.currentRepo = null; session.currentBranch = null;
+      document.getElementById('stBranch').innerHTML =
+        `<svg><use href="#i-branch"/></svg> ${session.username ? '@' + esc(session.username) : 'local'}`;
+      persistGitlab(); renderTree();
+      toast('Closed repository');
+    }
+    function clearAllStorage() {
+      if (!confirm('Clear ALL stored data?\n\n· Files in browser storage\n· GitLab session (token, repo)\n· Folder handle\n· Preferences (theme, accent, layout)\n\nThis can\'t be undone.')) return;
+      try {
+        localStorage.removeItem(STORE.files);
+        localStorage.removeItem(STORE.gitlab);
+        localStorage.removeItem(PREFS_KEY);
+      } catch {}
+      try { idb.del('dirHandle'); } catch {}
+      toast('All stored data cleared — reloading', 'warn');
+      setTimeout(() => location.reload(), 600);
+    }
+
+    /* ── File System Access API — open a folder from the user's disk.
+       Handle is persisted in IndexedDB; permission may need re-grant
+       on a new tab/session. ── */
+    let dirHandle = null;
+    let dirTreeCache = [];
+    let dirNeedsPerm = false;
+
+    function fsaSupported() { return typeof window.showDirectoryPicker === 'function'; }
+
+    async function openLocalDir() {
+      if (!fsaSupported()) {
+        toast('Folder open requires Chrome / Edge / Opera', 'err');
+        return;
+      }
+      try {
+        const h = await window.showDirectoryPicker({ mode: 'readwrite' });
+        dirHandle = h; dirNeedsPerm = false;
+        try { await idb.set('dirHandle', h); } catch {}
+        await refreshDirTree();
+        toast(`Folder · ${h.name}`, 'ok');
+      } catch (e) {
+        if (e.name !== 'AbortError') toast(`Open folder failed: ${e.message}`, 'err');
+      }
+    }
+
+    async function tryRestoreDir() {
+      if (!fsaSupported()) return;
+      try {
+        const h = await idb.get('dirHandle');
+        if (!h) return;
+        dirHandle = h;
+        const perm = await h.queryPermission({ mode: 'readwrite' });
+        if (perm === 'granted') { await refreshDirTree(); rewireDirFileHandles(); }
+        else { dirNeedsPerm = true; renderTree(); }
+      } catch {}
+    }
+
+    async function resumeDirAccess() {
+      if (!dirHandle) return false;
+      try {
+        const p = await dirHandle.requestPermission({ mode: 'readwrite' });
+        if (p === 'granted') {
+          dirNeedsPerm = false;
+          await refreshDirTree();
+          rewireDirFileHandles();
+          return true;
+        }
+        toast('Permission denied', 'err');
+      } catch (e) { toast(`Permission failed: ${e.message}`, 'err'); }
+      return false;
+    }
+
+    async function refreshDirTree() {
+      if (!dirHandle) return;
+      const out = [];
+      async function walk(h, prefix = '') {
+        for await (const e of h.values()) {
+          if (e.kind === 'directory') {
+            const name = e.name;
+            if (name.startsWith('.') ||
+                ['node_modules', '__pycache__', 'venv', '.venv', 'dist', 'build', '.git']
+                  .includes(name)) continue;
+            await walk(e, prefix + name + '/');
+          } else if (e.kind === 'file') {
+            out.push({ name: e.name, path: prefix + e.name, handle: e });
+          }
+        }
+      }
+      try { await walk(dirHandle); } catch {}
+      out.sort((a, b) => a.path.localeCompare(b.path));
+      dirTreeCache = out;
+      renderTree();
+    }
+
+    /* After refreshing the tree, re-attach FileSystemFileHandles to any
+       previously-restored `dir`-source files in the open files list. */
+    function rewireDirFileHandles() {
+      files.forEach(f => {
+        if (f.source === 'dir' && !f.handle && f.path) {
+          const m = dirTreeCache.find(t => t.path === f.path);
+          if (m) f.handle = m.handle;
+        }
+      });
+    }
+
+    async function openDirFile(path) {
+      const entry = dirTreeCache.find(e => e.path === path);
+      if (!entry) return;
+      // already open? just switch
+      const existing = files.find(f => f.source === 'dir' && f.path === path);
+      if (existing) { selectFile(existing.id); return; }
+      try {
+        const file = await entry.handle.getFile();
+        const content = await file.text();
+        const f = {
+          id: cryptoId(), name: entry.name, content, originalContent: content,
+          source: 'dir', path, handle: entry.handle,
+        };
+        files.push(f); selectFile(f.id); persistFiles();
+        toast(`Opened ${entry.name}`, 'ok');
+      } catch (e) {
+        toast(`Open failed: ${e.message}`, 'err');
+      }
+    }
+
+    function closeDir() {
+      dirHandle = null; dirTreeCache = []; dirNeedsPerm = false;
+      try { idb.del('dirHandle'); } catch {}
+      // Drop dir-sourced open files (their disk-source is gone)
+      for (let i = files.length - 1; i >= 0; i--) {
+        if (files[i].source === 'dir') {
+          if (files[i].id === activeId) activeId = null;
+          files.splice(i, 1);
+        }
+      }
+      if (!activeId) {
+        src.value = '';
+        fileLabel.textContent = 'untitled.py';
+        document.getElementById('bcFile').textContent = 'untitled.py';
+        renderHighlight();
+      }
+      persistFiles(); renderTree();
+      toast('Closed folder');
     }
 
     /* ── Accent palette ── each accent has separate dark / light variants.
@@ -3185,7 +3447,13 @@
       const gl = gut.children[ln - 1]; if (gl) gl.classList.add('active');
     }
 
-    src.addEventListener('input', () => { dirty(); renderHighlight(); });
+    src.addEventListener('input', () => {
+      dirty(); renderHighlight();
+      // keep the active file's in-memory buffer in sync so persistence
+      // captures uncommitted edits on the next debounced flush
+      const f = files.find(x => x.id === activeId);
+      if (f) { f.content = src.value; persistFiles(); }
+    });
     src.addEventListener('scroll', syncScroll);
     src.addEventListener('keyup', updateCursorPos);
     src.addEventListener('click', updateCursorPos);
@@ -3330,29 +3598,42 @@
     function newFile() {
       const name = prompt('New file name', `script_${files.length + 1}.py`); if (!name) return;
       const f = { id: cryptoId(), name, content: '', source: 'local' };
-      files.push(f); selectFile(f.id); renderTree();
+      files.push(f); selectFile(f.id); renderTree(); persistFiles();
       toast(`Created ${name}`, 'ok');
     }
     function cryptoId() {
       return 'f_' + Math.random().toString(36).slice(2, 10);
     }
     function selectFile(id) {
-      // save current first
       const cur = files.find(f => f.id === activeId);
       if (cur) cur.content = src.value;
       const f = files.find(f => f.id === id); if (!f) return;
       activeId = id;
-      src.value = f.content;
+      src.value = f.content || '';
       fileLabel.textContent = f.name;
       document.getElementById('bcFile').textContent = f.name;
-      document.getElementById('bcPath').textContent = f.source === 'gitlab' ? 'gitlab' : 'local';
-      renderHighlight(); clean();
-      renderTree();
+      document.getElementById('bcPath').textContent =
+        f.source === 'gitlab' ? 'gitlab' :
+        f.source === 'dir'    ? (dirHandle?.name || 'folder') : 'local';
+      renderHighlight();
+      // Mark dirty if content has diverged from original (e.g. restored unsaved edits)
+      if (f.originalContent !== undefined && f.originalContent !== f.content) dirty(); else clean();
+      renderTree(); persistFiles();
     }
-    function saveFile() {
-      const f = files.find(f => f.id === activeId);
+    async function saveFile() {
+      const f = files.find(x => x.id === activeId);
       if (!f) { newFile(); return; }
-      f.content = src.value; clean();
+      f.content = src.value;
+      if (f.source === 'dir' && f.handle) {
+        try {
+          const w = await f.handle.createWritable();
+          await w.write(f.content); await w.close();
+          f.originalContent = f.content;
+        } catch (e) { toast(`Save failed: ${e.message}`, 'err'); return; }
+      } else {
+        f.originalContent = f.content;
+      }
+      clean(); persistFiles();
       flash(document.getElementById('btnSave'));
       toast(`Saved ${f.name}`, 'ok');
     }
@@ -3364,27 +3645,80 @@
         fileLabel.textContent = 'untitled.py';
         document.getElementById('bcFile').textContent = 'untitled.py';
       }
-      renderHighlight(); renderTree();
+      renderHighlight(); renderTree(); persistFiles();
       toast(`Deleted ${f.name}`);
     }
     function renderTree() {
       const tree = document.getElementById('fileTree');
-      if (files.length === 0) {
-        tree.innerHTML = `
-      <div class="tree-empty">
-        <div>No files open.</div>
-        <div style="margin-top:8px" class="hint">Create a new file or load a repo from GitLab.</div>
-      </div>`;
-        return;
+      const parts = [];
+
+      /* — Open Files section (always shown) — */
+      if (files.length) {
+        const items = files.map(f => {
+          const isPy = f.name.endsWith('.py');
+          const ico = f.source === 'gitlab' ? 'i-gitlab'
+                    : f.source === 'dir'    ? 'i-folder-open'
+                    : isPy                  ? 'i-py' : 'i-doc';
+          const dirty = (f.originalContent !== undefined && f.originalContent !== f.content);
+          return `<div class="tree-item ${isPy ? 'py' : ''} ${f.id === activeId ? 'active' : ''} ${dirty ? 'dirty' : ''}"
+                       data-id="${f.id}" onclick="selectFile('${f.id}')">
+            <svg><use href="#${ico}"/></svg>
+            <span class="name">${escHtml(f.name)}</span>
+            <span class="mod-dot"></span>
+          </div>`;
+        }).join('');
+        parts.push(`<div class="tree-section">${items}</div>`);
+      } else {
+        parts.push(`<div class="tree-empty"><div>No files open.</div>
+          <div style="margin-top:8px" class="hint">Create a new file, open a folder, or load a repo from GitLab.</div></div>`);
       }
-      tree.innerHTML = files.map(f => {
-        const isPy = f.name.endsWith('.py');
-        return `<div class="tree-item ${isPy ? 'py' : ''} ${f.id === activeId ? 'active' : ''}" data-id="${f.id}" onclick="selectFile('${f.id}')">
-      <svg><use href="#i-${isPy ? 'py' : 'doc'}"/></svg>
-      <span class="name">${escHtml(f.name)}</span>
-      <span class="mod-dot"></span>
-    </div>`;
-      }).join('');
+
+      /* — Folder section (when a local folder is open) — */
+      if (dirHandle) {
+        parts.push(`<div class="tree-section">
+          <div class="tree-section-head">
+            <span class="tsh-label" title="${esc(dirHandle.name)}">${esc(dirHandle.name)}</span>
+            <button class="tsh-btn" data-tip="Refresh folder" onclick="refreshDirTree()"><svg><use href="#i-undo"/></svg></button>
+            <button class="tsh-btn" data-tip="Close folder" onclick="closeDir()"><svg><use href="#i-close"/></svg></button>
+          </div>
+          ${dirNeedsPerm
+            ? `<div class="tree-empty" style="text-align:left">
+                <div style="color:var(--text)">Folder permission lost on refresh.</div>
+                <button class="seg-item" style="margin-top:8px" onclick="resumeDirAccess()">
+                  <svg><use href="#i-power"/></svg> Reconnect
+                </button>
+              </div>`
+            : dirTreeCache.map(t => {
+                const isPy = t.name.endsWith('.py');
+                const open = files.find(f => f.source === 'dir' && f.path === t.path);
+                return `<div class="tree-item ${isPy ? 'py' : ''} ${open && open.id === activeId ? 'active' : ''}"
+                             onclick="openDirFile('${esc(t.path)}')">
+                  <svg><use href="#i-${isPy ? 'py' : 'doc'}"/></svg>
+                  <span class="name" title="${esc(t.path)}">${esc(t.name)}</span>
+                </div>`;
+              }).join('')
+          }
+        </div>`);
+      }
+
+      /* — GitLab repo section (when a repo is open) — */
+      if (session.token && session.currentRepo) {
+        parts.push(`<div class="tree-section">
+          <div class="tree-section-head">
+            <span class="tsh-label" title="${esc(session.currentRepo.fullPath)}">
+              <svg style="vertical-align:-2px"><use href="#i-gitlab"/></svg>
+              ${esc(session.currentRepo.name)}
+            </span>
+            <button class="tsh-btn" data-tip="Browse files" onclick="openFileTree('')"><svg><use href="#i-folder-open"/></svg></button>
+            <button class="tsh-btn" data-tip="Close repository" onclick="closeRepo()"><svg><use href="#i-close"/></svg></button>
+          </div>
+          <div class="tree-empty" style="text-align:left;padding:6px 14px;font-size:10.5px">
+            Branch · <b style="color:var(--purple)">${esc(session.currentBranch || '?')}</b>
+          </div>
+        </div>`);
+      }
+
+      tree.innerHTML = parts.join('');
     }
 
     /* ──────────────────────────────────────────────────────────────
@@ -4485,9 +4819,21 @@ except BaseException:
               <div class="set-label"><svg><use href="#i-info"/></svg> Storage</div>
               <div class="set-row">
                 <div class="set-row-label">Reset preferences
-                  <div class="set-row-hint">Restore all settings and panel layout to defaults</div>
+                  <div class="set-row-hint">Restore theme / accent / layout to defaults</div>
                 </div>
-                <button class="seg-item" id="setReset" style="border:1px solid var(--glass-border)">Reset</button>
+                <button class="mini-btn" id="setReset" data-tip="Reset preferences"><svg><use href="#i-undo"/></svg></button>
+              </div>
+              <div class="set-row">
+                <div class="set-row-label">Force disconnect GitLab
+                  <div class="set-row-hint">Drop the saved token, repo and any open remote files</div>
+                </div>
+                <button class="mini-btn" id="setForceDisc" data-tip="Force disconnect GitLab"><svg><use href="#i-power"/></svg></button>
+              </div>
+              <div class="set-row">
+                <div class="set-row-label">Clear all stored data
+                  <div class="set-row-hint">Files, GitLab session, folder handle, preferences</div>
+                </div>
+                <button class="mini-btn" id="setClearAll" data-tip="Clear all stored data"><svg><use href="#i-trash"/></svg></button>
               </div>
             </div>
           </div>
@@ -4530,6 +4876,16 @@ except BaseException:
         toast('Preferences reset', 'ok');
         closeSheet();
       };
+      document.getElementById('setForceDisc').onclick = () => {
+        if (!confirm('Force-disconnect GitLab? Token + saved repo will be wiped, and any open remote files closed.')) return;
+        forceDisconnectGitlab();
+        toast('GitLab disconnected', 'warn');
+        closeSheet();
+      };
+      document.getElementById('setClearAll').onclick = () => {
+        clearAllStorage();
+        closeSheet();
+      };
     }
     document.getElementById('btnSettings').addEventListener('click', openSettings);
 
@@ -4544,6 +4900,15 @@ except BaseException:
       workspace.setAttribute('data-side', open ? 'closed' : 'open');
       document.getElementById('btnExplorer').classList.toggle('active', !open);
       setPref('sidebarOpen', !open);
+    });
+    document.getElementById('btnOpenDir').addEventListener('click', () => {
+      // Ensure the sidebar is visible so the folder section becomes findable
+      if (workspace.getAttribute('data-side') !== 'open') {
+        workspace.setAttribute('data-side', 'open');
+        document.getElementById('btnExplorer').classList.add('active');
+        setPref('sidebarOpen', true);
+      }
+      openLocalDir();
     });
     document.getElementById('btnTerm').addEventListener('click', () => togglePanel('terminal'));
     document.getElementById('btnProblems').addEventListener('click', () => {
@@ -4611,7 +4976,7 @@ except BaseException:
       <div class="sh-title">Connect GitLab</div>
       <button class="sh-close" onclick="closeSheet()"><svg><use href="#i-close"/></svg></button>
     </div>
-    <div class="sheet-sub">Token stays in memory only — never on disk.</div>
+    <div class="sheet-sub">Token + repo are saved to browser storage so you stay signed in across refreshes. Cleared on sign-out or "Clear site data".</div>
     <div class="sheet-body">
       <div class="sheet-error" id="authError"></div>
       <div class="sheet-field"><label>Instance URL</label>
@@ -4639,6 +5004,7 @@ except BaseException:
         document.getElementById('glDot').style.display = 'none';
         document.getElementById('btnGitlab').classList.add('active');
         document.getElementById('stBranch').innerHTML = `<svg><use href="#i-branch"/></svg> @${esc(u.username)}`;
+        persistGitlab();
         closeSheet(); toast(`Connected as @${u.username}`, 'ok');
       } catch (e) {
         session.token = null;
@@ -4647,7 +5013,9 @@ except BaseException:
       }
     }
     function signOut() {
-      session.token = null; session.username = null; session.currentRepo = null; session.currentFile = null;
+      session.token = null; session.username = null; session.currentRepo = null;
+      session.currentBranch = null; session.currentFile = null;
+      try { localStorage.removeItem(STORE.gitlab); } catch {}
       document.getElementById('btnGitlab').classList.remove('active');
       document.getElementById('stBranch').innerHTML = `<svg><use href="#i-branch"/></svg> local`;
       closeSheet(); toast('Signed out');
@@ -4698,6 +5066,7 @@ except BaseException:
       session.currentRepo = { id, name, fullPath, defaultBranch };
       session.currentBranch = defaultBranch;
       document.getElementById('stBranch').innerHTML = `<svg><use href="#i-branch"/></svg> ${esc(defaultBranch)}`;
+      persistGitlab();
       openFileTree('');
     }
     let treePath = '';
@@ -4757,10 +5126,11 @@ except BaseException:
         const data = await res.json();
         const content = atob(data.content);
         const f = {
-          id: cryptoId(), name: path.split('/').pop(), content,
+          id: cryptoId(), name: path.split('/').pop(),
+          content, originalContent: content,
           source: 'gitlab', path, sha: data.last_commit_id
         };
-        files.push(f); selectFile(f.id); renderTree();
+        files.push(f); selectFile(f.id); renderTree(); persistFiles();
         toast(`Opened ${f.name}`, 'ok');
       } catch (e) { toast(`Open failed: ${e.message}`, 'err'); }
     }
@@ -4800,7 +5170,9 @@ except BaseException:
           })
         });
         if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || `HTTP ${res.status}`); }
-        closeSheet(); clean(); toast(`Pushed: "${msg.slice(0, 40)}"`, 'ok');
+        f.originalContent = f.content;
+        closeSheet(); clean(); persistFiles();
+        toast(`Pushed: "${msg.slice(0, 40)}"`, 'ok');
       } catch (e) {
         err.textContent = String(e.message); err.classList.add('show');
         btn.disabled = false; btn.innerHTML = '<svg><use href="#i-commit"/></svg> Commit & Push';
@@ -4815,6 +5187,8 @@ except BaseException:
       selectRepo, openFileTree, openRemoteFile, openCommitSheet, submitCommit,
       closeSheet, maybeCloseSheet, filterRepos, runCode, jumpToLine,
       fixOne, fixAllProblems,
+      openLocalDir, closeDir, closeRepo, refreshDirTree, resumeDirAccess,
+      openDirFile, forceDisconnectGitlab, clearAllStorage,
     });
 
     /* ──────────────────────────────────────────────────────────────
@@ -4826,8 +5200,32 @@ except BaseException:
     if (prefs.sidebarOpen) { workspace.setAttribute('data-side', 'open'); document.getElementById('btnExplorer').classList.add('active'); }
     restoreLayout();
 
+    // restore persisted state: GitLab session → open files → folder handle
+    if (loadPersistedGitlab()) {
+      document.getElementById('glDot').style.display = 'none';
+      document.getElementById('btnGitlab').classList.add('active');
+      document.getElementById('stBranch').innerHTML =
+        `<svg><use href="#i-branch"/></svg> ${esc(session.currentBranch || ('@' + (session.username || '')))}`;
+    }
+    loadPersistedFiles();
+    if (activeId) {
+      const f = files.find(x => x.id === activeId);
+      if (f) {
+        src.value = f.content || '';
+        fileLabel.textContent = f.name;
+        document.getElementById('bcFile').textContent = f.name;
+        document.getElementById('bcPath').textContent =
+          f.source === 'gitlab' ? 'gitlab' : f.source === 'dir' ? 'folder' : 'local';
+        if (f.originalContent !== undefined && f.originalContent !== f.content) dirty(); else clean();
+      }
+    }
+
     renderHighlight(); renderTree(); applyLayout(); rebuildTabs();
     attachSlotDropTargets();
+
+    // attempt to silently re-attach the saved folder handle (FS Access API)
+    tryRestoreDir().catch(() => {});
+
     // kick off pyodide load in the background
     loadPyodideOnce().catch(() => { });
 
