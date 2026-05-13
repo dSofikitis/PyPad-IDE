@@ -417,7 +417,10 @@ svg, svg * { cursor: inherit; pointer-events: none; }
   flex: 1;
 }
 
-.side-head .mini-btn {
+/* Generic mini-btn — sized everywhere it appears (sidebar, settings sheet,
+   etc.). Without an explicit svg size, iOS Safari renders inline SVG at the
+   spec default 300x150, which is why the storage-action icons were huge. */
+.mini-btn {
   width: 22px;
   height: 22px;
   border-radius: 6px;
@@ -426,14 +429,15 @@ svg, svg * { cursor: inherit; pointer-events: none; }
   justify-content: center;
   color: var(--dim);
   transition: all .15s;
+  flex-shrink: 0;
 }
 
-.side-head .mini-btn:hover {
+.mini-btn:hover {
   color: var(--accent);
   background: rgba(var(--accent-rgb),.08);
 }
 
-.side-head .mini-btn svg {
+.mini-btn svg {
   width: 13px;
   height: 13px;
 }
