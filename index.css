@@ -203,6 +203,10 @@ svg, svg * { cursor: inherit; pointer-events: none; }
   border-bottom: 1px solid var(--glass-border);
   position: relative;
   z-index: 50;
+  /* The whole topbar is an interactive control strip; force pointer cursor on
+     the bar itself so the 10px flex-gap between icon buttons never shows the
+     default-arrow during quick hover-across. */
+  cursor: var(--cur-pointer);
 }
 
 .brand {
@@ -311,8 +315,13 @@ svg, svg * { cursor: inherit; pointer-events: none; }
   box-shadow: 0 0 14px rgba(var(--accent-rgb),.08);
 }
 
+/* `:active` feedback uses filter, NOT transform.
+   transform: scale() shrinks the bounding box for hit-testing during the click,
+   which made the cursor briefly fall onto the topbar's default-cursor area
+   (the "system cursor flicker" the user was seeing). filter keeps layout
+   identical, so the cursor stays inside the button the whole time. */
 .icon-btn:active {
-  transform: scale(.9);
+  filter: brightness(.82);
 }
 
 .icon-btn.active {
@@ -1117,7 +1126,7 @@ svg, svg * { cursor: inherit; pointer-events: none; }
   transition: transform .15s, box-shadow .25s, filter .15s;
 }
 .pb-fix-all:hover { box-shadow: 0 4px 20px rgba(var(--accent-rgb),.55), 0 0 24px rgba(var(--accent-rgb),.25); filter: brightness(1.06); }
-.pb-fix-all:active { transform: scale(.96); }
+.pb-fix-all:active { filter: brightness(.86); }
 .pb-fix-all svg { width: 12px; height: 12px; }
 
 /* ── Individual problem row ── */
@@ -1182,7 +1191,7 @@ svg, svg * { cursor: inherit; pointer-events: none; }
   color: #fff; background: var(--accent); border-color: var(--accent);
   box-shadow: 0 0 16px rgba(var(--accent-rgb),.4);
 }
-.prob-btn:active { transform: scale(.9); }
+.prob-btn:active { filter: brightness(.82); }
 
 /* ── Clean state ── */
 .prob-clean {
@@ -1577,7 +1586,7 @@ svg, svg * { cursor: inherit; pointer-events: none; }
 }
 
 .sheet-btn:active {
-  transform: scale(.97);
+  filter: brightness(.88);
 }
 
 .sheet-btn:disabled {
@@ -1917,7 +1926,7 @@ svg, svg * { cursor: inherit; pointer-events: none; }
   box-shadow: var(--shadow-1), 0 0 18px var(--accent-glow);
   transform: translateY(-2px);
 }
-.mkbd-retract:active { transform: scale(.9); }
+.mkbd-retract:active { filter: brightness(.82); }
 .mkbd-retract svg { width: 16px; height: 16px; }
 
 .mkbd-row {
@@ -1948,7 +1957,7 @@ svg, svg * { cursor: inherit; pointer-events: none; }
 
 .mk:active {
   background: rgba(var(--accent-rgb),.15);
-  transform: scale(.94);
+  filter: brightness(.88);
   color: var(--accent);
 }
 
